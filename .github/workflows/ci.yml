@@ -10,9 +10,10 @@ on:
       - main
 
 jobs:
-  build-frontend:
-    name: Build frontend
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
+    container: node:18
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,8 +24,36 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: Build frontend (skip prebuild)
-        working-directory: ./frontend
+      - name: Install Trunk
+        run: |
+          curl -fsSL https://github.com/trunk-io/trunk/releases/latest/download/trunk -o trunk
+          chmod +x trunk
+          sudo mv trunk /usr/local/bin/
+
+      - name: Run Trunk Check
+        run: trunk check --ci
+
+  build-frontend:
+    name: Build frontend
+    runs-on: ubuntu-latest
+    container: ghcr.io/dfinity/icp-dev-env-slim:22
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install DFX
+        run: |
+          curl -fsSL https://sdk.dfinity.org/install.sh -o install.sh
+          chmod +x install.sh
+          echo y | ./install.sh
+
+      - name: Build frontend
         run: |
           npm ci
-          npx vite build
+          npm run build

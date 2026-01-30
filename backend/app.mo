@@ -1,5 +1,6 @@
 import hashlib
 import time
+import random
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Optional
@@ -26,8 +27,8 @@ class ZKProof(BaseModel):
 
 db = {
     "users": {
-        "elara": {"merit": 50, "salt": "secret_123"},
-        "devon": {"merit": 20, "salt": "secret_456"}
+        "elara": {"merit_score": 50, "salt": "secret_123"},
+        "devon": {"merit_score": 20, "salt": "secret_456"}
     },
     "bounties": [],
     "private_ledger": [], # Visible only to the owner
@@ -88,7 +89,6 @@ def perform_private_action(proof: ZKProof):
 def view_public_log():
     """Transparency: Anyone can see WHAT happened, but not WHO did it."""
     return db["public_audit_log"]
-    import random
 
 class Case(BaseModel):
     id: int

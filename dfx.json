@@ -7,7 +7,6 @@
       "args": "--enhanced-orthogonal-persistence"
     },
     "frontend": {
-      "dependencies": ["backend"],
       "frontend": {
         "entrypoint": "frontend/index.html"
       },
