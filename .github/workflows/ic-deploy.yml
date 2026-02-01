@@ -1,0 +1,92 @@
+name: Deploy to Internet Computer
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dfx (Internet Computer SDK)
+        run: |
+          DFXVM_INIT_YES=true DFX_VERSION=0.24.3 sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
+          echo "$HOME/.local/share/dfx/bin" >> $GITHUB_PATH
+
+      - name: Verify dfx installation
+        run: dfx --version
+
+      - name: Install mops (Motoko package manager)
+        run: npm install -g ic-mops
+
+      - name: Verify mops installation
+        run: mops --version
+
+      - name: Install project dependencies
+        run: npm ci
+
+      - name: Install Motoko dependencies
+        run: mops install
+
+      - name: Setup dfx identity from secret
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          DFX_IDENTITY: ${{ secrets.DFX_IDENTITY }}
+        run: |
+          if [ -z "$DFX_IDENTITY" ]; then
+            echo "Warning: DFX_IDENTITY secret not set. Using default identity for dry-run."
+            echo "To deploy to mainnet, set DFX_IDENTITY secret in repository settings."
+            echo "DRY_RUN=true" >> $GITHUB_ENV
+          else
+            mkdir -p ~/.config/dfx/identity/default
+            echo "$DFX_IDENTITY" > ~/.config/dfx/identity/default/identity.pem
+            chmod 600 ~/.config/dfx/identity/default/identity.pem
+            dfx identity whoami
+            echo "DRY_RUN=false" >> $GITHUB_ENV
+          fi
+
+      - name: Build frontend
+        run: npm run prebuild
+
+      - name: Generate Candid interfaces
+        run: dfx generate backend || echo "Candid generation skipped - will be generated during build"
+
+      - name: Build project (creates frontend dist)
+        run: npm run build
+
+      - name: Deploy to IC mainnet
+        if: env.DRY_RUN == 'false'
+        run: |
+          echo "Deploying to Internet Computer mainnet..."
+          dfx deploy --network ic
+          echo "Deployment complete!"
+
+      - name: Dry-run notification
+        if: env.DRY_RUN == 'true'
+        run: |
+          echo "======================================"
+          echo "DRY-RUN MODE: Build successful"
+          echo "======================================"
+          echo "To enable actual deployment to IC mainnet:"
+          echo "1. Create a dfx identity: dfx identity new github-actions"
+          echo "2. Export the identity: dfx identity export github-actions"
+          echo "3. Add the identity PEM content as a GitHub secret named DFX_IDENTITY"
+          echo "4. Ensure you have cycles in the identity for deployment"
+          echo "======================================"
+
+      - name: Save deployment info
+        if: env.DRY_RUN == 'false'
+        run: |
+          echo "Canister IDs:" >> $GITHUB_STEP_SUMMARY
+          cat canister_ids.json >> $GITHUB_STEP_SUMMARY || echo "No canister_ids.json found"
