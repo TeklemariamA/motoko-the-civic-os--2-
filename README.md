@@ -41,6 +41,38 @@ The above command will download an 8B parameter model, which is around 4GiB. Onc
 dfx start --background --clean && dfx deploy
 ```
 
+## CI/CD and Deployment
+
+This repository includes automated GitHub Actions workflows for continuous integration and deployment:
+
+### Automated Workflows
+
+- **Node.js CI**: Tests the project across Node.js versions 18.x, 20.x, and 22.x on every push and pull request
+- **IC Deploy**: Automatically builds and deploys to Internet Computer mainnet on pushes to main (requires setup)
+- **GitHub Pages**: Deploys the frontend to GitHub Pages for easy preview
+
+For detailed information about workflows and deployment setup, see [.github/WORKFLOWS.md](.github/WORKFLOWS.md).
+
+### Setting up Mainnet Deployment
+
+To enable automatic deployment to IC mainnet:
+
+1. Create a dfx identity for GitHub Actions:
+   ```bash
+   dfx identity new github-actions
+   dfx identity use github-actions
+   dfx identity export github-actions > identity.pem
+   ```
+
+2. Add the identity as a GitHub secret:
+   - Go to repository Settings → Secrets and variables → Actions
+   - Create a new secret named `DFX_IDENTITY`
+   - Paste the content of `identity.pem` as the value
+
+3. Ensure the identity has sufficient cycles for deployment
+
+For more details, see the [workflow documentation](.github/WORKFLOWS.md).
+
 ## Security considerations and best practices
 
 If you base your application on this example, it is recommended that you familiarize yourself with and adhere to the [security best practices](https://internetcomputer.org/docs/building-apps/security/overview) for developing on ICP. This example may not implement all the best practices.
