@@ -4,7 +4,7 @@ This repository includes several GitHub Actions workflows for continuous integra
 
 ## Workflows
 
-### 1. IC Deploy (`ic-deploy.yml`)
+### 1. IC Deploy (`ic-deploy.yml`) ✨ NEW
 
 **Purpose:** Build and deploy the Motoko-based LLM Chatbot dapp to the Internet Computer mainnet.
 
@@ -47,7 +47,7 @@ Then add the content of `identity.pem` as a GitHub secret named `DFX_IDENTITY`:
 dfx wallet balance
 ```
 
-### 2. Node.js CI (`node.js.yml`)
+### 2. Node.js CI (`node.js.yml`) 🔄 UPDATED
 
 **Purpose:** Continuous integration testing across multiple Node.js versions.
 
@@ -62,7 +62,7 @@ dfx wallet balance
 4. Builds the project
 5. Runs tests (if available)
 
-### 3. Deploy Frontend to Pages (`pages-deploy.yml`)
+### 3. Deploy Frontend to Pages (`pages-deploy.yml`) 🔄 UPDATED
 
 **Purpose:** Deploy the frontend static assets to GitHub Pages.
 
