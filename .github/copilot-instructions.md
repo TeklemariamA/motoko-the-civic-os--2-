@@ -1,36 +1,16 @@
 ﻿﻿﻿# Copilot instructions for this repository
 
-Purpose: orient an AI coding agent quickly across canisters, frontend, and LLM setup so it can contribute without guessing.
+Goal: make an AI agent immediately productive by documenting how this ICP sample is stitched together (canisters, React UI, Ollama-backed LLM) and where the sharp edges are.
 
-1) Big-picture architecture
-- Canisters in [dfx.json](dfx.json): `backend` (declared Motoko canister but implemented as Python/FastAPI-style code in [backend/app.mo](backend/app.mo)), `frontend` assets served from [frontend/dist](frontend/dist) with entry [frontend/index.html](frontend/index.html), and remote `llm` canister (specified id/wasm, id `w36hm-eqaaa-aaaal-qr76a-cai`). Output env written to `.env`; build packtool set to `mops sources`.
-- Data flow: React UI calls `backend.chat` through generated bindings under `declarations/backend`, backend routes to LLM/case logic, then returns strings rendered in chat UI.
-- Storage: frontend uses localStorage key `civic_chat_history_v1` to persist chat; backend keeps in-memory dicts for users/bounties/audit cases (no persistence).
+- **Canisters and layout**: [dfx.json](dfx.json) declares `backend` (type `motoko` but source is Python in [backend/app.mo](backend/app.mo)), `frontend` assets from [frontend/dist](frontend/dist) with entry [frontend/index.html](frontend/index.html), and remote `llm` canister id `w36hm-eqaaa-aaaal-qr76a-cai`. Output env goes to `.env`; packtool `mops sources`.
+- **Backend reality check**: [backend/app.mo](backend/app.mo) is FastAPI-style Python, not Motoko. Endpoints: `/bounties/create`, `/bounties/{id}/current_value`, `/audit/private_action`, `/audit/public_log`, `/justice/file_case`, `/justice/cast_verdict`. All state is in-memory (users with salts/merit, bounties with time-based reward growth, audit log of proof hashes, merit-weighted juror selection). There is **no `chat` handler** here; the React UI will fail unless you add one or rewire the frontend.
+- **Frontend flow**: [frontend/src/main.jsx](frontend/src/main.jsx) renders a chat UI that calls `backend.chat(messages)` from generated bindings. It stores history in localStorage key `civic_chat_history_v1`, shows a “Thinking ...” placeholder, strips it on response/error, and surfaces canister errors by parsing `SysTransient`/`CanisterReject`. Avatars live at `/bot.svg` and `/user.svg`; styling via [frontend/index.css](frontend/index.css) and Tailwind config in [frontend/tailwind.config.js](frontend/tailwind.config.js).
+- **Bindings**: Generated at [frontend/src/declarations/backend/index.js](frontend/src/declarations/backend/index.js) (also mirrored under [src/declarations/backend/index.js](src/declarations/backend/index.js)). They are required for Vite to build; regenerate with `dfx generate backend` whenever the candid changes.
+- **LLM dependency**: README expects a local Ollama server on port 11434; run `ollama serve` then `ollama run llama3.1:8b` once to download the model. The intended chat path is through the remote `llm` canister, but the missing backend `chat` means you must bridge the React UI to either the FastAPI endpoints or the LLM canister manually.
+- **Dev workflow**: Root uses npm workspaces ([package.json](package.json)) pointing to `frontend`; run commands from the repo root (`npm install`, `npm run dev`, `npm run build`, `npm run prebuild`). `prebuild` in [frontend/package.json](frontend/package.json) installs dev deps then runs `dfx generate backend`. Typical local loop: `dfx start --background`, ensure bindings exist, then `npm run dev`. Clean deploy sample: `dfx start --background --clean && dfx deploy`; mainnet: `dfx deploy --network ic` after funding cycles (see [BUILD.md](BUILD.md)).
+- **Devcontainer**: [./.devcontainer/devcontainer.json](.devcontainer/devcontainer.json) uses `ghcr.io/dfinity/icp-dev-env-slim:22`, forwards 4943 (dfx) and 5173 (vite), pre-installs the Motoko VS Code extension. Ports are forwarded; browser auto-opens for Vite.
+- **State and persistence**: everything is ephemeral (in-memory backend, localStorage frontend). Restarting dfx or the server resets backend data; avoid assuming durable storage.
+- **Conventions/gotchas**: Repo labeling suggests Motoko but backend is Python; don’t introduce Motoko-specific changes unless replacing the whole backend. Keep `llm` canister id/URLs in [dfx.json](dfx.json) in sync with any provider changes. If chat fails, verify bindings generation and that a `chat` endpoint exists or is stubbed.
+- **What to add first when extending**: decide on a real chat path (FastAPI route, Motoko canister, or proxy to `llm` canister) and update both candid and [frontend/src/main.jsx](frontend/src/main.jsx) accordingly; add minimal tests or mocks if you introduce persistence or merit logic changes.
 
-2) Backend behavior (Python logic in .mo file)
-- FastAPI app exposes: `/bounties/create`, `/bounties/{id}/current_value`, `/audit/private_action`, `/audit/public_log`, `/justice/file_case`, `/justice/cast_verdict` in [backend/app.mo](backend/app.mo). In-memory DB holds users with salts/merit, bounties with time-based reward growth, audit log with hashed proofs, and simple jury selection with merit-weighted random choices.
-- Note: Frontend expects a canister method `chat(messages)` via `declarations/backend`. If you change the chat path, either implement a `chat` endpoint in the backend canister interface or update [frontend/src/main.jsx](frontend/src/main.jsx) accordingly.
-- No tests or persistence; any restart resets state. Watch for salt/proof hashes and merit score updates when modifying logic.
-
-3) Frontend behavior (Vite React)
-- Main UI in [frontend/src/main.jsx](frontend/src/main.jsx) uses `backend.chat(messages)`; errors are parsed for `SysTransient`/`CanisterReject` via regex and surfaced with `alert`. Messages are stored with timestamps; a “Thinking ...” placeholder is removed after the backend responds or errors.
-- Styling via Tailwind config in [frontend/tailwind.config.js](frontend/tailwind.config.js) and global CSS in [frontend/index.css](frontend/index.css). Static avatars pulled from `/bot.svg` and `/user.svg`.
-- Bindings live under [frontend/src/declarations/backend/index.js](frontend/src/declarations/backend/index.js) and are generated by `dfx generate backend`.
-
-4) Developer workflows
-- Root uses npm workspaces ([package.json](package.json)) pointing to `frontend`; run scripts from the repo root so workspace scripts fan out (`npm run dev`, `npm run build`, `npm run prebuild`).
-- `frontend` scripts: `prebuild` installs dev deps then runs `dfx generate backend`; `dev` and `build` are Vite. Bindings under [frontend/src/declarations/backend](frontend/src/declarations/backend) are required before the UI builds—ensure `dfx start` is running and `dfx generate backend` succeeds.
-- Local loop: `npm install`, `dfx start --background`, `npm run dev`. Clean deploy: `dfx start --background --clean && dfx deploy`. Mainnet: `dfx deploy --network ic` once cycles are funded (see [BUILD.md](BUILD.md) for identity and cycles guidance).
-- LLM setup from [README.md](README.md): start `ollama serve` (port 11434), then `ollama run llama3.1:8b` once to download the model. The backend chat path relies on an LLM endpoint.
-
-5) Integration points and conventions
-- Remote `llm` canister config (candid/wasm URLs and specified id) is baked into [dfx.json](dfx.json); keep aligned if updating LLM provider. Changes to the specified id or URLs should be mirrored in your deployment strategy.
-- Dev container guidance and native setup steps live in [BUILD.md](BUILD.md); follow if tooling is missing (dfx, ic-mops, Node).
-- No automated tests present. When adding tests, prefer lightweight mocks for the backend chat/LLM path to avoid needing a live model.
-
-6) Gotchas and expectations
-- The “Motoko” backend is actually Python; avoid Motoko-only syntax changes unless replacing the whole shim.
-- State is ephemeral; design features with this in mind or add persistence explicitly.
-- Ensure generated bindings exist before running Vite to avoid import failures. If `backend.chat` is missing at runtime, re-run `dfx generate backend` and verify canister interfaces.
-
-If any section feels thin (e.g., deeper backend endpoint details or LLM wiring), ask and we can expand.
+Ask for clarifications if any area feels thin (e.g., desired chat wiring or LLM routing).

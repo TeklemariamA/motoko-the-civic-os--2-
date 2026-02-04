@@ -42,24 +42,27 @@ const App = () => {
 
   const askAgent = async (messages) => {
     try {
-      const response = await backend.chat(messages);
+      const response = await fetch('http://localhost:8000/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages }),
+      });
+      const data = await response.json();
       setChat((prevChat) => {
         const newChat = [...prevChat];
         newChat.pop();
-        newChat.push({ system: { content: response }, ts: new Date().toISOString() });
+        newChat.push({ system: { content: data.response || data }, ts: new Date().toISOString() });
         persist(newChat);
         return newChat;
       });
     } catch (e) {
       console.log(e);
-      const eStr = String(e);
-      const match = eStr.match(/(SysTransient|CanisterReject), \\"([^\\\"]+)/);
-      if (match) {
-        alert(match[2]);
-      }
       setChat((prevChat) => {
         const newChat = [...prevChat];
         newChat.pop();
+        newChat.push({ system: { content: 'Error: ' + String(e) }, ts: new Date().toISOString() });
         persist(newChat);
         return newChat;
       });
