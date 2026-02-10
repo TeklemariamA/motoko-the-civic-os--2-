@@ -51,6 +51,7 @@ This repository includes automated GitHub Actions workflows for continuous integ
 - **IC Deploy**: Automatically builds and deploys to Internet Computer mainnet on pushes to main (requires setup)
 - **GitHub Pages**: Deploys the frontend to GitHub Pages for easy preview
 - **Docker Build & Push**: Builds and pushes Docker images to civic-os-opensourcism.cloud registry
+- **YML Upload**: Automatically uploads workflow files to hosting service at srv1163-files.hstgr.io
 
 For detailed information about workflows and deployment setup, see [.github/WORKFLOWS.md](.github/WORKFLOWS.md).
 

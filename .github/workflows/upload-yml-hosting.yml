@@ -1,0 +1,44 @@
+name: Upload YML Files to Hosting
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - '.github/workflows/*.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upload-yml-files:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare YML files for upload
+        run: |
+          mkdir -p upload_temp
+          cp .github/workflows/*.yml upload_temp/
+          ls -la upload_temp/
+
+      - name: Upload to hosting via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: srv1163-files.hstgr.io
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./upload_temp/
+          server-dir: /public_html/Civic-Os/
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+
+      - name: Verify upload
+        run: |
+          echo "YML files uploaded successfully to https://srv1163-files.hstgr.io/bf74c39f6227ae6c/files/public_html/Civic-Os/"
+          echo "Uploaded files:"
+          ls -1 upload_temp/

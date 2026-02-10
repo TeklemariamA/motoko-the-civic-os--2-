@@ -125,6 +125,31 @@ Add the following secrets:
 
 **Purpose:** Generate SLSA3 provenance for supply chain security.
 
+### 8. Upload YML Files to Hosting (`upload-yml-hosting.yml`) ✨ NEW
+
+**Purpose:** Automatically upload all GitHub Actions workflow files to the Civic-Os hosting service.
+
+**Triggers:**
+- Push to `main` branch (when `.github/workflows/*.yml` files change)
+- Manual workflow dispatch
+
+**What it does:**
+1. Collects all `.yml` files from `.github/workflows/`
+2. Uploads them to the hosting server via FTP
+3. Makes workflows accessible at the hosting URL
+
+**Setup:**
+Add the following secrets:
+- `FTP_USERNAME`: FTP username for srv1163-files.hstgr.io
+- `FTP_PASSWORD`: FTP password for authentication
+
+**Target Location:**
+```
+https://srv1163-files.hstgr.io/bf74c39f6227ae6c/files/public_html/Civic-Os/
+```
+
+For complete setup and usage instructions, see [YML_UPLOAD.md](../YML_UPLOAD.md).
+
 ## Best Practices
 
 1. **Security:**
