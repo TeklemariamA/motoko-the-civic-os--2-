@@ -1,0 +1,44 @@
+# Node modules
+node_modules/
+frontend/node_modules/
+
+# Build outputs
+frontend/dist/
+.dfx/
+dist/
+build/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation
+*.md
+BUILD.md
+README.md
+
+# Config files
+.github/
+.devcontainer/
+
+# Dependencies
+package-lock.json
+mops.toml
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+.DS_Store
