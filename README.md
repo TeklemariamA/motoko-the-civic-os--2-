@@ -50,8 +50,25 @@ This repository includes automated GitHub Actions workflows for continuous integ
 - **Node.js CI**: Tests the project across Node.js versions 18.x, 20.x, and 22.x on every push and pull request
 - **IC Deploy**: Automatically builds and deploys to Internet Computer mainnet on pushes to main (requires setup)
 - **GitHub Pages**: Deploys the frontend to GitHub Pages for easy preview
+- **Docker Build & Push**: Builds and pushes Docker images to civic-os-opensourcism.cloud registry
 
 For detailed information about workflows and deployment setup, see [.github/WORKFLOWS.md](.github/WORKFLOWS.md).
+
+## Docker Deployment
+
+The CivicOS v2.0 backend can be deployed as a Docker container. See [DOCKER.md](DOCKER.md) for complete instructions.
+
+### Quick Start with Docker
+
+Build and run locally:
+```bash
+docker build -t civic-os:latest .
+docker run -d -p 8000:8000 civic-os:latest
+```
+
+Access the API at http://localhost:8000/docs
+
+For automated deployment to civic-os-opensourcism.cloud, configure the `DOCKER_USERNAME` and `DOCKER_PASSWORD` secrets in your repository settings.
 
 ### Setting up Mainnet Deployment
 

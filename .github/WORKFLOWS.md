@@ -78,7 +78,33 @@ dfx wallet balance
 **Setup:**
 Enable GitHub Pages in repository Settings → Pages → Source: GitHub Actions
 
-### 4. Datadog Synthetic Tests (`datadog-synthetics.yml`)
+### 4. Docker Build & Push (`docker-push.yml`) ✨ NEW
+
+**Purpose:** Build and push Docker images of the CivicOS v2.0 backend to civic-os-opensourcism.cloud registry.
+
+**Triggers:**
+- Push to `main` branch (when backend/, Dockerfile, or workflow changes)
+- Manual workflow dispatch
+
+**What it does:**
+1. Builds Docker image for the FastAPI backend
+2. Tags image with multiple tags (latest, branch name, git SHA, semantic version)
+3. Pushes image to civic-os-opensourcism.cloud registry
+4. Uses build cache for faster builds
+
+**Setup:**
+Add the following secrets:
+- `DOCKER_USERNAME`: Username for civic-os-opensourcism.cloud registry
+- `DOCKER_PASSWORD`: Password/token for civic-os-opensourcism.cloud registry
+
+The image will be available at:
+```
+civic-os-opensourcism.cloud/motoko-civic-os:latest
+```
+
+For more details, see [DOCKER.md](../DOCKER.md).
+
+### 5. Datadog Synthetic Tests (`datadog-synthetics.yml`)
 
 **Purpose:** Run Datadog synthetic monitoring tests.
 
@@ -91,11 +117,11 @@ Add the following secrets:
 - `DD_API_KEY`: Datadog API key
 - `DD_APP_KEY`: Datadog Application key
 
-### 5. NPM Publish (`npm-publish.yml`)
+### 6. NPM Publish (`npm-publish.yml`)
 
 **Purpose:** Publish packages to npm registry (if applicable).
 
-### 6. SLSA Provenance (`generator-generic-ossf-slsa3-publish.yml`)
+### 7. SLSA Provenance (`generator-generic-ossf-slsa3-publish.yml`)
 
 **Purpose:** Generate SLSA3 provenance for supply chain security.
 
