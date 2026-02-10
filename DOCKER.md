@@ -4,7 +4,7 @@ This document describes how to build and deploy the CivicOS v2.0 application usi
 
 ## Overview
 
-The application is containerized using Docker and can be pushed to the `civic-os-opensourcism.cloud` Docker registry.
+The application is containerized using Docker and can be pushed to the GitHub Container Registry (ghcr.io).
 
 ## Files
 
@@ -33,24 +33,16 @@ The API will be available at:
 
 ## Automated Deployment
 
-The GitHub Actions workflow automatically builds and pushes the Docker image to `civic-os-opensourcism.cloud` when:
+The GitHub Actions workflow automatically builds and pushes the Docker image to GitHub Container Registry (ghcr.io) when:
 - Changes are pushed to the `main` branch affecting:
   - `backend/**`
   - `Dockerfile`
   - `.github/workflows/docker-push.yml`
 - Manually triggered via workflow dispatch
 
-### Required Secrets
+### Authentication
 
-To enable automated deployment, configure the following GitHub secrets:
-
-1. `DOCKER_USERNAME`: Username for the civic-os-opensourcism.cloud registry
-2. `DOCKER_PASSWORD`: Password/token for the civic-os-opensourcism.cloud registry
-
-To add these secrets:
-1. Go to repository Settings → Secrets and variables → Actions
-2. Click "New repository secret"
-3. Add each secret with the appropriate value
+The workflow uses the built-in `GITHUB_TOKEN` for authentication with GitHub Container Registry. No additional secrets need to be configured.
 
 ## Image Tags
 
@@ -88,12 +80,12 @@ The application can be configured using the following environment variables:
 
 ## Docker Registry
 
-The images are pushed to: `civic-os-opensourcism.cloud/motoko-civic-os`
+The images are pushed to GitHub Container Registry: `ghcr.io/teklemariama/motoko-the-civic-os--2-`
 
 To pull the latest image:
 
 ```bash
-docker pull civic-os-opensourcism.cloud/motoko-civic-os:latest
+docker pull ghcr.io/teklemariama/motoko-the-civic-os--2-:latest
 ```
 
 ## Troubleshooting
