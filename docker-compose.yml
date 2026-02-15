@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  dfx:
+    image: dfinity/dfinity:latest
+    container_name: dfx
+    working_dir: /project
+    volumes:
+      - ./:/project
+    ports:
+      - "8000:8000"   # Replica
+      - "8001:8001"   # Webserver
+      - "8002:8002"   # Controller (optional)
+    command: ["dfx", "start", "--background", "--clean"]
