@@ -1,14 +1,45 @@
 version: "3.8"
 
 services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: civic-os-backend
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; urllib.request.urlopen('http://localhost:8000/docs') or (print('Backend API docs endpoint unavailable at http://localhost:8000/docs', file=sys.stderr) or sys.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    image: node:20-alpine
+    container_name: civic-os-frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - DFX_NETWORK=local
+      - CANISTER_ID_BACKEND=${CANISTER_ID_BACKEND:-}
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
   dfx:
     image: dfinity/dfinity:latest
-    container_name: dfx
+    container_name: civic-os-dfx
     working_dir: /project
     volumes:
       - ./:/project
     ports:
-      - "8000:8000"   # Replica
-      - "8001:8001"   # Webserver
-      - "8002:8002"   # Controller (optional)
-    command: ["dfx", "start", "--background", "--clean"]
+      - "4943:4943"
+    command: ["dfx", "start", "--host", "0.0.0.0", "--clean"]
+    restart: unless-stopped
