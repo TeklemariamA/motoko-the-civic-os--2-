@@ -1,4 +1,5 @@
 import hashlib
+import random
 import time
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -26,10 +27,11 @@ class ZKProof(BaseModel):
 
 db = {
     "users": {
-        "elara": {"merit": 50, "salt": "secret_123"},
-        "devon": {"merit": 20, "salt": "secret_456"}
+        "elara": {"merit": 50, "merit_score": 50, "salt": "secret_123"},
+        "devon": {"merit": 20, "merit_score": 20, "salt": "secret_456"}
     },
     "bounties": [],
+    "cases": [],
     "private_ledger": [], # Visible only to the owner
     "public_audit_log": []  # Visible to all, but users are anonymized by hashes
 }
@@ -88,7 +90,6 @@ def perform_private_action(proof: ZKProof):
 def view_public_log():
     """Transparency: Anyone can see WHAT happened, but not WHO did it."""
     return db["public_audit_log"]
-    import random
 
 class Case(BaseModel):
     id: int
@@ -124,7 +125,6 @@ def file_case(plaintiff: str, defendant: str, category: str, evidence: str):
         jurors=selected_jurors
     )
     
-    if "cases" not in db: db["cases"] = []
     db["cases"].append(new_case)
     return {"case_id": case_id, "jury": selected_jurors}
 
