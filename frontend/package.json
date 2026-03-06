@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+<<<<<<< HEAD
     "prebuild": "npm i --include=dev && dfx generate backend",
     "scripts": {
  "build": "vite build",
@@ -11,6 +12,12 @@
 }
 
   },
+=======
+ "prebuild": "npm i --include=dev && dfx generate backend",
+ "build": "vite build",
+ "dev": "vite"
+},
+>>>>>>> b9c99f6 (Fix frontend npm scripts)
   "dependencies": {
     "@dfinity/agent": "2.4.1",
     "@dfinity/auth-client": "2.4.1",
