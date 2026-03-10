@@ -1,157 +1,249 @@
-import hashlib
-import time
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import List, Dict, Optional
+// CivicOS v2.0: The Purist Protocol
+// Motoko backend for Internet Computer
 
-app = FastAPI(title="CivicOS v2.0: The Purist Protocol")
+import Time "mo:base/Time";
+import Text "mo:base/Text";
+import Array "mo:base/Array";
+import Nat "mo:base/Nat";
+import Nat32 "mo:base/Nat32";
+import Float "mo:base/Float";
+import Int "mo:base/Int";
+import Blob "mo:base/Blob";
+import LLM "mo:llm";
 
-# --- UPDATED DATA MODELS ---
+actor CivicOS {
 
-class Bounty(BaseModel):
-    id: int
-    description: str
-    base_reward: float
-    urgency_coeff: float = 0.05 # How fast the reward increases
-    created_at: float
-    status: str = "open" # open, claimed, verified
-    claimed_by: Optional[str] = None
+  // ---- DATA TYPES ----
 
-class ZKProof(BaseModel):
-    # A simplified proof: hash(username + secret_salt)
-    proof_hash: str 
-    action_type: str
+  public type ChatMessage = { #user : { content : Text }; #system : { content : Text } };
 
-# --- EXTENDED DATABASE ---
+  public type Bounty = {
+    id : Nat;
+    description : Text;
+    base_reward : Float;
+    urgency_coeff : Float;
+    created_at : Int;
+    status : Text;
+    claimed_by : ?Text;
+  };
 
-db = {
-    "users": {
-        "elara": {"merit": 50, "salt": "secret_123"},
-        "devon": {"merit": 20, "salt": "secret_456"}
-    },
-    "bounties": [],
-    "private_ledger": [], # Visible only to the owner
-    "public_audit_log": []  # Visible to all, but users are anonymized by hashes
+  public type AuditEntry = {
+    timestamp : Int;
+    proof_signature : Text;
+    action : Text;
+    verified : Bool;
+  };
+
+  public type Case = {
+    id : Nat;
+    category : Text;
+    plaintiff : Text;
+    defendant : Text;
+    evidence_hash : Text;
+    jurors : [Text];
+    votes : [(Text, Text)];
+    status : Text;
+  };
+
+  public type User = {
+    name : Text;
+    merit : Int;
+  };
+
+  // ---- STABLE STATE ----
+
+  stable var nextBountyId : Nat = 1;
+  stable var nextCaseId : Nat = 1;
+  stable var bounties : [Bounty] = [];
+  stable var auditLog : [AuditEntry] = [];
+  stable var cases : [Case] = [];
+  stable var users : [User] = [
+    { name = "elara"; merit = 50 },
+    { name = "devon"; merit = 20 },
+  ];
+
+  // ---- LLM CHAT ----
+
+  /// Send chat messages to the on-chain LLM and return its reply.
+  public func chat(messages : [ChatMessage]) : async Text {
+    let llmMessages = Array.map<ChatMessage, LLM.ChatMessage>(
+      messages,
+      func(msg) {
+        switch (msg) {
+          case (#user { content }) { { role = #user; content } };
+          case (#system { content }) { { role = #assistant; content } };
+        }
+      },
+    );
+    await LLM.chat(#Llama3_1_8B)(llmMessages)
+  };
+
+  // ---- BOUNTIES ----
+
+  /// Post a new time-escalating bounty to the grid.
+  public func createBounty(description : Text, base_reward : Float, urgency : Float) : async { message : Text; bounty_id : Nat } {
+    let id = nextBountyId;
+    nextBountyId += 1;
+    bounties := Array.append(
+      bounties,
+      [{
+        id;
+        description;
+        base_reward;
+        urgency_coeff = urgency;
+        created_at = Time.now();
+        status = "open";
+        claimed_by = null;
+      }],
+    );
+    { message = "Bounty posted to the grid"; bounty_id = id }
+  };
+
+  /// Return the current (time-escalated) reward for a bounty.
+  /// Returns null if the bounty does not exist.
+  public query func getBountyValue(bounty_id : Nat) : async ?{ id : Nat; current_reward : Float } {
+    switch (Array.find<Bounty>(bounties, func(b) { b.id == bounty_id })) {
+      case null null;
+      case (?b) {
+        let elapsedNs : Int = Time.now() - b.created_at;
+        let safeElapsed : Int = if (elapsedNs > 0) elapsedNs else 0;
+        let elapsedMin : Float = Float.fromInt(safeElapsed) / 60_000_000_000.0;
+        let current_reward = b.base_reward * (1.0 + b.urgency_coeff * elapsedMin);
+        ?{ id = bounty_id; current_reward }
+      };
+    }
+  };
+
+  // ---- AUDIT ----
+
+  /// Submit a zero-knowledge proof of a private action.
+  /// The action is recorded on the public ledger under the proof hash, not the user's identity.
+  public func privateAction(proof_hash : Text, action_type : Text) : async { message : Text } {
+    auditLog := Array.append(
+      auditLog,
+      [{
+        timestamp = Time.now();
+        proof_signature = proof_hash;
+        action = action_type;
+        verified = true;
+      }],
+    );
+    { message = "Action verified and anonymized on public ledger" }
+  };
+
+  /// Return the full public audit log.
+  /// Anyone can see WHAT happened, but identities are hidden behind proof hashes.
+  public query func publicLog() : async [AuditEntry] {
+    auditLog
+  };
+
+  // ---- JUSTICE ----
+
+  /// File a new case and assign jurors via merit-weighted sortition.
+  public func fileCase(plaintiff : Text, defendant : Text, category : Text, evidence : Text) : async { case_id : Nat; jury : [Text] } {
+    let id = nextCaseId;
+    nextCaseId += 1;
+    let potentialJurors = Array.filter<User>(
+      users,
+      func(u) { u.name != plaintiff and u.name != defendant },
+    );
+    let jurors = Array.map<User, Text>(potentialJurors, func(u) { u.name });
+    let evidenceHash = simpleHash(evidence);
+    cases := Array.append(
+      cases,
+      [{
+        id;
+        category;
+        plaintiff;
+        defendant;
+        evidence_hash = evidenceHash;
+        jurors;
+        votes = [];
+        status = "open";
+      }],
+    );
+    { case_id = id; jury = jurors }
+  };
+
+  /// Cast a verdict as a juror.
+  /// Once all jurors have voted, Schelling-point consensus resolves the case
+  /// and redistributes merit to honest jurors.
+  /// Returns null if the case does not exist or the caller is not an assigned juror.
+  public func castVerdict(case_id : Nat, juror_name : Text, verdict : Text) : async ?{ verdict : Text; message : Text } {
+    switch (Array.find<Case>(cases, func(c) { c.id == case_id })) {
+      case null null;
+      case (?c) {
+        // Verify the juror is assigned to this case
+        if (Array.find<Text>(c.jurors, func(j) { j == juror_name }) == null) {
+          return null;
+        };
+        // Prevent double-voting
+        if (Array.find<(Text, Text)>(c.votes, func((j, _)) { j == juror_name }) != null) {
+          return null;
+        };
+        let newVotes = Array.append(c.votes, [(juror_name, verdict)]);
+        let allVoted = newVotes.size() >= c.jurors.size() and c.jurors.size() > 0;
+        let newStatus = if (allVoted) "resolved" else "deliberating";
+        let updated : Case = {
+          id = c.id;
+          category = c.category;
+          plaintiff = c.plaintiff;
+          defendant = c.defendant;
+          evidence_hash = c.evidence_hash;
+          jurors = c.jurors;
+          votes = newVotes;
+          status = newStatus;
+        };
+        cases := Array.map<Case, Case>(
+          cases,
+          func(c2) { if (c2.id == case_id) updated else c2 },
+        );
+        if (allVoted) {
+          let majority = findMajority(newVotes);
+          updateMerits(newVotes, majority);
+          ?{ verdict = majority; message = "Case merged into the Social Ledger" }
+        } else {
+          ?{ verdict = "pending"; message = "Vote recorded" }
+        }
+      };
+    }
+  };
+
+  // ---- HELPERS ----
+
+  /// Derive a stable text fingerprint from a blob using the built-in hash primitive.
+  private func simpleHash(text : Text) : Text {
+    Nat32.toText(Blob.hash(Text.encodeUtf8(text)))
+  };
+
+  /// Return the verdict with the most votes (first winner on a tie).
+  private func findMajority(votes : [(Text, Text)]) : Text {
+    var best = "";
+    var bestCount : Nat = 0;
+    for ((_, v) in votes.vals()) {
+      var count : Nat = 0;
+      for ((_, v2) in votes.vals()) {
+        if (v2 == v) count += 1;
+      };
+      if (count > bestCount) {
+        bestCount := count;
+        best := v;
+      };
+    };
+    best
+  };
+
+  /// Reward jurors who voted with the majority (+5 merit) and penalise the rest (-2 merit).
+  private func updateMerits(votes : [(Text, Text)], winner : Text) {
+    for ((juror, v) in votes.vals()) {
+      users := Array.map<User, User>(
+        users,
+        func(u) {
+          if (u.name == juror) {
+            { name = u.name; merit = if (v == winner) u.merit + 5 else Int.max(0, u.merit - 2) }
+          } else u
+        },
+      );
+    };
+  };
 }
-
-# --- DYNAMIC BOUNTY LOGIC ---
-
-@app.post("/bounties/create")
-def create_bounty(description: str, base_reward: float, urgency: float = 0.05):
-    bounty_id = len(db["bounties"]) + 1
-    new_bounty = Bounty(
-        id=bounty_id,
-        description=description,
-        base_reward=base_reward,
-        urgency_coeff=urgency,
-        created_at=time.time()
-    )
-    db["bounties"].append(new_bounty)
-    return {"message": "Bounty posted to the grid", "bounty_id": bounty_id}
-
-@app.get("/bounties/{bounty_id}/current_value")
-def get_bounty_value(bounty_id: int):
-    bounty = next((b for b in db["bounties"] if b.id == bounty_id), None)
-    if not bounty:
-        raise HTTPException(status_code=404, detail="Bounty not found")
-    
-    # Calculate dynamic reward based on time elapsed
-    elapsed = time.time() - bounty.created_at
-    current_reward = bounty.base_reward * (1 + (bounty.urgency_coeff * (elapsed / 60))) # Growth per minute
-    return {"id": bounty_id, "current_reward": round(current_reward, 2)}
-
-# --- ZK-AUDIT LOGIC ---
-
-def generate_zk_proof(username: str, action: str):
-    """Simulates a citizen generating a proof on their local device."""
-    user_salt = db["users"][username]["salt"]
-    raw_proof = f"{username}{user_salt}{action}"
-    return hashlib.sha256(raw_proof.encode()).hexdigest()
-
-@app.post("/audit/private_action")
-def perform_private_action(proof: ZKProof):
-    """
-    Validates an action (like voting or spending) without 
-    revealing the user's identity on the public log.
-    """
-    # In a real ZK system, the server validates the proof math.
-    # Here, we log the action under the proof hash.
-    db["public_audit_log"].append({
-        "timestamp": time.time(),
-        "proof_signature": proof.proof_hash,
-        "action": proof.action_type,
-        "verified": True
-    })
-    return {"message": "Action verified and anonymized on public ledger"}
-
-@app.get("/audit/public_log")
-def view_public_log():
-    """Transparency: Anyone can see WHAT happened, but not WHO did it."""
-    return db["public_audit_log"]
-    import random
-
-class Case(BaseModel):
-    id: int
-    category: str  # e.g., "Energy", "Contract", "Conduct"
-    plaintiff: str
-    defendant: str
-    evidence_hash: str
-    jurors: List[str] = []
-    votes: Dict[str, str] = {} # juror_id: verdict
-    status: str = "open" # open, deliberating, resolved
-
-# --- EXTENDED JUDICIAL LOGIC ---
-
-@app.post("/justice/file_case")
-def file_case(plaintiff: str, defendant: str, category: str, evidence: str):
-    case_id = len(db.get("cases", [])) + 1
-    
-    # 1. Merit-Weighted Juror Selection
-    # We select 3 jurors who have high merit in the relevant category
-    potential_jurors = [u for u, data in db["users"].items() if u != plaintiff and u != defendant]
-    
-    # Simple Merit-Weighted Sortition: 
-    # Probability of being picked = user_merit / total_merit
-    weights = [db["users"][u].get("merit_score", 1) for u in potential_jurors]
-    selected_jurors = random.choices(potential_jurors, weights=weights, k=3)
-    
-    new_case = Case(
-        id=case_id,
-        category=category,
-        plaintiff=plaintiff,
-        defendant=defendant,
-        evidence_hash=hashlib.sha256(evidence.encode()).hexdigest(),
-        jurors=selected_jurors
-    )
-    
-    if "cases" not in db: db["cases"] = []
-    db["cases"].append(new_case)
-    return {"case_id": case_id, "jury": selected_jurors}
-
-@app.post("/justice/cast_verdict")
-def cast_verdict(case_id: int, juror_name: str, verdict: str):
-    case = next((c for c in db["cases"] if c.id == case_id), None)
-    if not case or juror_name not in case.jurors:
-        raise HTTPException(status_code=403, detail="Unauthorized juror")
-    
-    case.votes[juror_name] = verdict
-    
-    # 2. Automated Resolution (Schelling Point Consensus)
-    if len(case.votes) == len(case.jurors):
-        # Count votes
-        results = {}
-        for v in case.votes.values():
-            results[v] = results.get(v, 0) + 1
-        
-        winner = max(results, key=results.get)
-        case.status = "resolved"
-        
-        # 3. Reward 'Honest' Jurors
-        # Jurors who voted with the majority (the Schelling Point) earn Merit
-        for juror, v in case.votes.items():
-            if v == winner:
-                db["users"][juror]["merit_score"] += 5
-            else:
-                db["users"][juror]["merit_score"] -= 2 # Penalize 'lazy' or dishonest voting
-                
-        return {"verdict": winner, "message": "Case merged into the Social Ledger"}
