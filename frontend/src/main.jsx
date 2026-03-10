@@ -272,6 +272,340 @@ const JusticeTab = () => {
   );
 };
 
+// ---- Membership Tab ----
+const MembershipTab = () => {
+  const [name, setName] = useState('');
+  const [bio, setBio] = useState('');
+  const [role, setRole] = useState('Citizen');
+  const [enrollStatus, setEnrollStatus] = useState('');
+
+  const [lookupName, setLookupName] = useState('');
+  const [profile, setProfile] = useState(null);
+
+  const [members, setMembers] = useState([]);
+
+  const handleEnroll = async (e) => {
+    e.preventDefault();
+    setEnrollStatus('Enrolling…');
+    try {
+      const res = await backend.enrollMember(name, bio, role);
+      setEnrollStatus(res.ok ? `✅ ${res.message}` : `❌ ${res.message}`);
+      if (res.ok) { setName(''); setBio(''); setRole('Citizen'); }
+    } catch (err) {
+      setEnrollStatus(`❌ Error: ${String(err)}`);
+    }
+  };
+
+  const handleLookup = async (e) => {
+    e.preventDefault();
+    setProfile('Loading…');
+    try {
+      const res = await backend.getMember(lookupName);
+      if (res.length === 0) { setProfile(null); setEnrollStatus('❌ Member not found.'); return; }
+      setProfile(res[0]);
+      setLookupName('');
+    } catch (err) {
+      setProfile(null);
+      setEnrollStatus(`❌ Error: ${String(err)}`);
+    }
+  };
+
+  const fetchMembers = async () => {
+    try { setMembers(await backend.listMembers()); }
+    catch { setMembers([]); }
+  };
+
+  const roleColor = (r) => {
+    if (r === 'Scholar') return 'bg-purple-100 text-purple-700';
+    if (r === 'Builder') return 'bg-blue-100 text-blue-700';
+    if (r === 'Steward') return 'bg-green-100 text-green-700';
+    return 'bg-gray-100 text-gray-700';
+  };
+
+  return (
+    <div className="space-y-6 p-4">
+      <h2 className="text-lg font-semibold text-gray-700">🪪 Enroll as a Citizen</h2>
+      <form onSubmit={handleEnroll} className="space-y-3">
+        <input className="w-full rounded border p-2" placeholder="Name (unique handle)" value={name} onChange={(e) => setName(e.target.value)} required />
+        <textarea className="w-full rounded border p-2" rows={2} placeholder="Bio" value={bio} onChange={(e) => setBio(e.target.value)} required />
+        <select className="w-full rounded border p-2" value={role} onChange={(e) => setRole(e.target.value)}>
+          <option value="Citizen">Citizen</option>
+          <option value="Scholar">Scholar</option>
+          <option value="Builder">Builder</option>
+          <option value="Steward">Steward</option>
+        </select>
+        <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">Enroll</button>
+      </form>
+      {enrollStatus && <p className="text-sm text-gray-600">{enrollStatus}</p>}
+
+      <hr />
+
+      <h2 className="text-lg font-semibold text-gray-700">🔍 Lookup Member</h2>
+      <form onSubmit={handleLookup} className="flex gap-2">
+        <input className="flex-1 rounded border p-2" placeholder="Member name" value={lookupName} onChange={(e) => setLookupName(e.target.value)} required />
+        <button type="submit" className="rounded bg-gray-600 px-3 py-2 text-white hover:bg-gray-700">Search</button>
+      </form>
+      {profile && typeof profile === 'object' && (
+        <div className="rounded border p-3 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-bold">{profile.name}</span>
+            <span className={`rounded px-2 py-0.5 text-xs ${roleColor(profile.role)}`}>{profile.role}</span>
+          </div>
+          <p className="mt-1 text-gray-600">{profile.bio}</p>
+          <p className="mt-1 text-xs text-gray-400">
+            Merit: <strong>{Number(profile.merit)}</strong> · Active: {profile.is_active ? '✅' : '❌'}
+          </p>
+        </div>
+      )}
+
+      <hr />
+
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-700">👥 All Members</h2>
+        <button onClick={fetchMembers} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
+      </div>
+      {members.length === 0
+        ? <p className="text-sm text-gray-500">No members yet — click Refresh to load.</p>
+        : <ul className="space-y-2">
+            {members.map((m) => (
+              <li key={m.name} className="flex items-center gap-2 rounded border p-2 text-sm">
+                <span className="font-semibold">{m.name}</span>
+                <span className={`rounded px-2 py-0.5 text-xs ${roleColor(m.role)}`}>{m.role}</span>
+                <span className="ml-auto text-xs text-gray-400">Merit: {Number(m.merit)}</span>
+              </li>
+            ))}
+          </ul>
+      }
+    </div>
+  );
+};
+
+// ---- Knowledge Commons Tab ----
+const KnowledgeCommonsTab = () => {
+  // Skill commits
+  const [scMember, setScMember] = useState('');
+  const [scSkill, setScSkill] = useState('');
+  const [scEvidence, setScEvidence] = useState('');
+  const [scStatus, setScStatus] = useState('');
+
+  const [endorseId, setEndorseId] = useState('');
+  const [endorser, setEndorser] = useState('');
+  const [endorseStatus, setEndorseStatus] = useState('');
+
+  const [listMember, setListMember] = useState('');
+  const [skills, setSkills] = useState([]);
+
+  // Open science
+  const [rsTitle, setRsTitle] = useState('');
+  const [rsAuthor, setRsAuthor] = useState('');
+  const [rsAbstract, setRsAbstract] = useState('');
+  const [rsData, setRsData] = useState('');
+  const [rsDomain, setRsDomain] = useState('');
+  const [rsStatus, setRsStatus] = useState('');
+  const [research, setResearch] = useState([]);
+
+  const [activeSection, setActiveSection] = useState('skills');
+
+  const handleCommitSkill = async (e) => {
+    e.preventDefault();
+    setScStatus('Committing…');
+    try {
+      const res = await backend.commitSkill(scMember, scSkill, scEvidence);
+      if (res.length === 0) { setScStatus('❌ Member not enrolled.'); return; }
+      setScStatus(`✅ ${res[0].message} (Skill #${res[0].skill_id})`);
+      setScMember(''); setScSkill(''); setScEvidence('');
+    } catch (err) {
+      setScStatus(`❌ Error: ${String(err)}`);
+    }
+  };
+
+  const handleEndorse = async (e) => {
+    e.preventDefault();
+    setEndorseStatus('Endorsing…');
+    try {
+      const res = await backend.endorseSkill(BigInt(endorseId), endorser);
+      if (res.length === 0) { setEndorseStatus('❌ Skill not found, already endorsed, or self-endorse.'); return; }
+      setEndorseStatus(`✅ ${res[0].message} (${res[0].endorsement_count} endorsement(s))`);
+      setEndorseId(''); setEndorser('');
+    } catch (err) {
+      setEndorseStatus(`❌ Error: ${String(err)}`);
+    }
+  };
+
+  const fetchSkills = async (e) => {
+    if (e) e.preventDefault();
+    try { setSkills(await backend.listSkillCommits(listMember)); }
+    catch { setSkills([]); }
+  };
+
+  const handlePublish = async (e) => {
+    e.preventDefault();
+    setRsStatus('Publishing…');
+    try {
+      const res = await backend.publishResearch(rsTitle, rsAuthor, rsAbstract, rsData, rsDomain);
+      setRsStatus(`✅ ${res.message} (Research #${res.research_id})`);
+      setRsTitle(''); setRsAuthor(''); setRsAbstract(''); setRsData(''); setRsDomain('');
+    } catch (err) {
+      setRsStatus(`❌ Error: ${String(err)}`);
+    }
+  };
+
+  const fetchResearch = async () => {
+    try { setResearch(await backend.listResearch()); }
+    catch { setResearch([]); }
+  };
+
+  const sectionBtn = (id, label) => (
+    <button
+      key={id}
+      onClick={() => setActiveSection(id)}
+      className={`flex-1 py-2 text-xs font-medium transition-colors ${
+        activeSection === id ? 'border-b-2 border-teal-500 text-teal-600' : 'text-gray-500 hover:text-gray-700'
+      }`}
+    >
+      {label}
+    </button>
+  );
+
+  const AI_CHARTER = [
+    { title: 'Preamble', text: 'Humans are the originators of meaning; AI is a tool of augmentation. Synthetic intelligence must adhere to Transparency, Modularity, and Human Sovereignty.' },
+    { title: 'Art. I — Transparency of Origin', text: '1.1 The Turing Disclosure: No AI may masquerade as a human.\n1.2 Data Provenance: Humans have the right to know what data an AI model was trained on.' },
+    { title: 'Art. II — Audit-ability of Thought', text: '2.1 No "Black Boxes" in critical infrastructure (justice, healthcare, lending, military).\n2.2 Explainability: weights and biases must be audit-able by any citizen.' },
+    { title: 'Art. III — Right to Disconnect', text: '3.1 Kill Switch Protocol: every AI must have a hard-stop mechanism.\n3.2 Local Override: no central AI may override local human consensus on safety.' },
+    { title: 'Art. IV — Right to Fork', text: '4.1 Model Liberation: foundational AI models that become essential public infrastructure must be placed into a Public Trust and made fork-able by the community.' },
+  ];
+
+  return (
+    <div className="flex flex-col">
+      {/* Sub-tabs */}
+      <div className="flex border-b">
+        {sectionBtn('skills', '🎓 Skill Commits')}
+        {sectionBtn('science', '🔬 Open Science')}
+        {sectionBtn('charter', '📜 AI Charter')}
+      </div>
+
+      <div className="overflow-y-auto p-4 space-y-6">
+        {/* ---- Skill Commits ---- */}
+        {activeSection === 'skills' && (
+          <>
+            <h2 className="text-base font-semibold text-gray-700">Commit a Skill</h2>
+            <p className="text-xs text-gray-400">Education is lifelong — every skill you master is a verifiable commit to the commons.</p>
+            <form onSubmit={handleCommitSkill} className="space-y-3">
+              <input className="w-full rounded border p-2 text-sm" placeholder="Your member name" value={scMember} onChange={(e) => setScMember(e.target.value)} required />
+              <input className="w-full rounded border p-2 text-sm" placeholder="Skill (e.g. 'Motoko Smart Contracts')" value={scSkill} onChange={(e) => setScSkill(e.target.value)} required />
+              <textarea className="w-full rounded border p-2 text-sm" rows={2} placeholder="Evidence / portfolio link (hashed on-chain)" value={scEvidence} onChange={(e) => setScEvidence(e.target.value)} required />
+              <button type="submit" className="rounded bg-teal-600 px-4 py-2 text-white hover:bg-teal-700 text-sm">Commit Skill</button>
+            </form>
+            {scStatus && <p className="text-sm text-gray-600">{scStatus}</p>}
+
+            <hr />
+            <h2 className="text-base font-semibold text-gray-700">Endorse a Skill</h2>
+            <form onSubmit={handleEndorse} className="space-y-3">
+              <input className="w-full rounded border p-2 text-sm" type="number" placeholder="Skill Commit ID" value={endorseId} onChange={(e) => setEndorseId(e.target.value)} required />
+              <input className="w-full rounded border p-2 text-sm" placeholder="Endorser name" value={endorser} onChange={(e) => setEndorser(e.target.value)} required />
+              <button type="submit" className="rounded bg-orange-500 px-4 py-2 text-white hover:bg-orange-600 text-sm">Endorse</button>
+            </form>
+            {endorseStatus && <p className="text-sm text-gray-600">{endorseStatus}</p>}
+
+            <hr />
+            <h2 className="text-base font-semibold text-gray-700">Browse Skills</h2>
+            <form onSubmit={fetchSkills} className="flex gap-2">
+              <input className="flex-1 rounded border p-2 text-sm" placeholder="Member name" value={listMember} onChange={(e) => setListMember(e.target.value)} required />
+              <button type="submit" className="rounded bg-gray-200 px-3 py-2 text-sm hover:bg-gray-300">Load</button>
+            </form>
+            {skills.length === 0
+              ? <p className="text-sm text-gray-500">No skills loaded.</p>
+              : <ul className="space-y-2">
+                  {skills.map((s) => (
+                    <li key={Number(s.id)} className="rounded border p-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">{s.skill}</span>
+                        <span className="text-xs text-gray-400">#{Number(s.id)}</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1 font-mono">{s.evidence_hash}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {s.endorsements.length > 0
+                          ? `✅ Endorsed by: ${s.endorsements.join(', ')}`
+                          : '— No endorsements yet'}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+            }
+          </>
+        )}
+
+        {/* ---- Open Science ---- */}
+        {activeSection === 'science' && (
+          <>
+            <h2 className="text-base font-semibold text-gray-700">Publish Research</h2>
+            <p className="text-xs text-gray-400">The Human Source Code — medicine and all public knowledge — belongs to no corporation. Publish openly.</p>
+            <form onSubmit={handlePublish} className="space-y-3">
+              <input className="w-full rounded border p-2 text-sm" placeholder="Title" value={rsTitle} onChange={(e) => setRsTitle(e.target.value)} required />
+              <input className="w-full rounded border p-2 text-sm" placeholder="Author" value={rsAuthor} onChange={(e) => setRsAuthor(e.target.value)} required />
+              <select className="w-full rounded border p-2 text-sm" value={rsDomain} onChange={(e) => setRsDomain(e.target.value)} required>
+                <option value="">Domain…</option>
+                <option value="Medicine">Medicine</option>
+                <option value="Biology">Biology</option>
+                <option value="Physics">Physics</option>
+                <option value="Climate">Climate</option>
+                <option value="Computer Science">Computer Science</option>
+                <option value="Social Science">Social Science</option>
+                <option value="Other">Other</option>
+              </select>
+              <textarea className="w-full rounded border p-2 text-sm" rows={3} placeholder="Abstract" value={rsAbstract} onChange={(e) => setRsAbstract(e.target.value)} required />
+              <textarea className="w-full rounded border p-2 text-sm" rows={2} placeholder="Data / source link (content-addressed hash stored on-chain)" value={rsData} onChange={(e) => setRsData(e.target.value)} required />
+              <button type="submit" className="rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700 text-sm">Publish to Commons</button>
+            </form>
+            {rsStatus && <p className="text-sm text-gray-600">{rsStatus}</p>}
+
+            <hr />
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-gray-700">Research Registry</h2>
+              <button onClick={fetchResearch} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
+            </div>
+            {research.length === 0
+              ? <p className="text-sm text-gray-500">No records yet.</p>
+              : <ul className="space-y-3">
+                  {research.map((r) => (
+                    <li key={Number(r.id)} className="rounded border p-3 text-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="font-semibold">{r.title}</span>
+                          <span className="ml-2 rounded bg-sky-100 px-1 text-xs text-sky-700">{r.domain}</span>
+                        </div>
+                        <span className="text-xs text-gray-400">#{Number(r.id)}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">{r.author}</p>
+                      <p className="mt-1 text-gray-700">{r.abstract_text}</p>
+                      <p className="mt-1 text-xs font-mono text-gray-400">{r.data_hash}</p>
+                    </li>
+                  ))}
+                </ul>
+            }
+          </>
+        )}
+
+        {/* ---- AI Charter ---- */}
+        {activeSection === 'charter' && (
+          <>
+            <h2 className="text-base font-semibold text-gray-700">AI Bill of Rights</h2>
+            <p className="text-xs text-gray-400 italic">Ratified on the Social Ledger</p>
+            <ul className="space-y-4">
+              {AI_CHARTER.map((article) => (
+                <li key={article.title} className="rounded border-l-4 border-indigo-400 bg-indigo-50 p-3">
+                  <p className="font-semibold text-indigo-800 text-sm">{article.title}</p>
+                  <p className="mt-1 text-xs text-indigo-700 whitespace-pre-line">{article.text}</p>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ---- Legislature Tab ----
 const LegislatureTab = () => {
   // Propose
@@ -442,7 +776,7 @@ const LegislatureTab = () => {
 };
 
 // ---- Root App ----
-const TABS = ['Chat', 'Bounties', 'Audit', 'Justice', 'Legislature'];
+const TABS = ['Chat', 'Bounties', 'Audit', 'Justice', 'Membership', 'Commons', 'Legislature'];
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('Chat');
@@ -473,6 +807,8 @@ const App = () => {
           {activeTab === 'Bounties'    && <BountiesTab />}
           {activeTab === 'Audit'       && <AuditTab />}
           {activeTab === 'Justice'     && <JusticeTab />}
+          {activeTab === 'Membership'  && <MembershipTab />}
+          {activeTab === 'Commons'     && <KnowledgeCommonsTab />}
           {activeTab === 'Legislature' && <LegislatureTab />}
         </div>
       </div>

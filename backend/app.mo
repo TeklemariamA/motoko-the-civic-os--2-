@@ -50,6 +50,40 @@ actor CivicOS {
     merit : Int;
   };
 
+  /// A registered citizen of the Social OS.
+  /// role examples: "Citizen", "Scholar", "Builder", "Steward"
+  public type Member = {
+    name : Text;
+    bio : Text;
+    role : Text;
+    joined_at : Int;
+    merit : Int;
+    is_active : Bool;
+  };
+
+  /// A verifiable skill that a member has committed to the Knowledge Commons.
+  /// Inspired by the "Skill-Commit" model — education as lifelong accumulation.
+  public type SkillCommit = {
+    id : Nat;
+    member : Text;
+    skill : Text;
+    evidence_hash : Text;
+    endorsements : [Text];
+    created_at : Int;
+  };
+
+  /// An open-science research record.
+  /// All publicly funded knowledge belongs to the commons.
+  public type ResearchRecord = {
+    id : Nat;
+    title : Text;
+    author : Text;
+    abstract_text : Text;
+    data_hash : Text;
+    domain : Text;
+    created_at : Int;
+  };
+
   /// A legislative bill / proposal that citizens vote on.
   /// status: "active" | "passed" | "rejected"
   /// forked_from: ?id of the parent bill when this is a fork
@@ -72,12 +106,17 @@ actor CivicOS {
   stable var nextBountyId : Nat = 1;
   stable var nextCaseId : Nat = 1;
   stable var nextBillId : Nat = 1;
+  stable var nextSkillId : Nat = 1;
+  stable var nextResearchId : Nat = 1;
   stable var bounties : [Bounty] = [];
   stable var auditLog : [AuditEntry] = [];
   stable var cases : [Case] = [];
   stable var bills : [Bill] = [];
   // (bill_id, citizen_name, choice) — one row per vote
   stable var billVotes : [(Nat, Text, Text)] = [];
+  stable var members : [Member] = [];
+  stable var skillCommits : [SkillCommit] = [];
+  stable var researchRecords : [ResearchRecord] = [];
   stable var users : [User] = [
     { name = "elara"; merit = 50 },
     { name = "devon"; merit = 20 },
@@ -346,6 +385,120 @@ actor CivicOS {
         ?{ bill_id = id; message = "Bill forked from #" # Nat.toText(original_id) }
       };
     }
+  };
+
+  // ---- MEMBERSHIP ENROLLMENT ----
+
+  /// Enroll a new citizen in the Social OS.
+  /// Returns an error message if the name is already taken.
+  public func enrollMember(name : Text, bio : Text, role : Text) : async { ok : Bool; message : Text } {
+    if (Array.find<Member>(members, func(m) { m.name == name }) != null) {
+      return { ok = false; message = "Name already enrolled" };
+    };
+    members := Array.append(
+      members,
+      [{
+        name;
+        bio;
+        role;
+        joined_at = Time.now();
+        merit = 10; // welcome bonus
+        is_active = true;
+      }],
+    );
+    { ok = true; message = "Welcome to the Social OS, " # name # "! Starting merit: 10" }
+  };
+
+  /// Return a member profile by name.
+  public query func getMember(name : Text) : async ?Member {
+    Array.find<Member>(members, func(m) { m.name == name })
+  };
+
+  /// Return all enrolled members.
+  public query func listMembers() : async [Member] {
+    members
+  };
+
+  // ---- KNOWLEDGE COMMONS — SKILL COMMITS ----
+
+  /// Commit a verifiable skill to the Knowledge Commons.
+  /// Any enrolled member can commit skills; evidence is stored as a content hash.
+  /// Returns null if the member is not enrolled.
+  public func commitSkill(member : Text, skill : Text, evidence : Text) : async ?{ skill_id : Nat; message : Text } {
+    if (Array.find<Member>(members, func(m) { m.name == member }) == null) {
+      return null;
+    };
+    let id = nextSkillId;
+    nextSkillId += 1;
+    skillCommits := Array.append(
+      skillCommits,
+      [{
+        id;
+        member;
+        skill;
+        evidence_hash = simpleHash(evidence);
+        endorsements = [];
+        created_at = Time.now();
+      }],
+    );
+    ?{ skill_id = id; message = "Skill committed: " # skill }
+  };
+
+  /// Endorse a skill commit on behalf of another member.
+  /// A member cannot endorse their own skill. Returns null if skill or endorser not found.
+  public func endorseSkill(skill_id : Nat, endorser : Text) : async ?{ skill_id : Nat; endorsement_count : Nat; message : Text } {
+    switch (Array.find<SkillCommit>(skillCommits, func(s) { s.id == skill_id })) {
+      case null null;
+      case (?sc) {
+        if (sc.member == endorser) return null; // no self-endorsement
+        if (Array.find<Text>(sc.endorsements, func(e) { e == endorser }) != null) return null; // already endorsed
+        let updated : SkillCommit = {
+          id = sc.id;
+          member = sc.member;
+          skill = sc.skill;
+          evidence_hash = sc.evidence_hash;
+          endorsements = Array.append(sc.endorsements, [endorser]);
+          created_at = sc.created_at;
+        };
+        skillCommits := Array.map<SkillCommit, SkillCommit>(
+          skillCommits,
+          func(s) { if (s.id == skill_id) updated else s },
+        );
+        ?{ skill_id; endorsement_count = updated.endorsements.size(); message = endorser # " endorsed this skill" }
+      };
+    }
+  };
+
+  /// Return all skill commits for a given member.
+  public query func listSkillCommits(member : Text) : async [SkillCommit] {
+    Array.filter<SkillCommit>(skillCommits, func(s) { s.member == member })
+  };
+
+  // ---- KNOWLEDGE COMMONS — OPEN SCIENCE ----
+
+  /// Publish a research record to the open-science commons.
+  /// Per the Human Source Code principle: all publicly relevant knowledge is immediately public.
+  public func publishResearch(title : Text, author : Text, abstract_text : Text, data : Text, domain : Text) : async { research_id : Nat; message : Text } {
+    let id = nextResearchId;
+    nextResearchId += 1;
+    researchRecords := Array.append(
+      researchRecords,
+      [{
+        id;
+        title;
+        author;
+        abstract_text;
+        data_hash = simpleHash(data);
+        domain;
+        created_at = Time.now();
+      }],
+    );
+    { research_id = id; message = "Research published to the commons: " # title }
+  };
+
+  /// Return all open-science research records.
+  public query func listResearch() : async [ResearchRecord] {
+    researchRecords
   };
 
   // ---- HELPERS ----
