@@ -272,8 +272,177 @@ const JusticeTab = () => {
   );
 };
 
+// ---- Legislature Tab ----
+const LegislatureTab = () => {
+  // Propose
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [author, setAuthor] = useState('');
+  const [category, setCategory] = useState('');
+  const [proposeStatus, setProposeStatus] = useState('');
+
+  // Vote
+  const [voteId, setVoteId] = useState('');
+  const [voteCitizen, setVoteCitizen] = useState('');
+  const [voteChoice, setVoteChoice] = useState('yes');
+  const [voteResult, setVoteResult] = useState(null);
+
+  // Fork
+  const [forkId, setForkId] = useState('');
+  const [forkTitle, setForkTitle] = useState('');
+  const [forkBody, setForkBody] = useState('');
+  const [forkAuthor, setForkAuthor] = useState('');
+  const [forkResult, setForkResult] = useState(null);
+
+  // Bill list
+  const [bills, setBills] = useState([]);
+
+  const handlePropose = async (e) => {
+    e.preventDefault();
+    setProposeStatus('Proposing…');
+    try {
+      const res = await backend.proposeBill(title, body, author, category);
+      setProposeStatus(`✅ ${res.message} (Bill #${res.bill_id})`);
+      setTitle(''); setBody(''); setAuthor(''); setCategory('');
+    } catch (err) {
+      setProposeStatus(`❌ Error: ${String(err)}`);
+    }
+  };
+
+  const handleVote = async (e) => {
+    e.preventDefault();
+    setVoteResult('Voting…');
+    try {
+      const res = await backend.castVote(BigInt(voteId), voteCitizen, voteChoice);
+      if (res.length === 0) { setVoteResult('❌ Bill not found or already voted.'); return; }
+      const r = res[0];
+      const pct = (Number(r.yes) + Number(r.no)) > 0
+        ? Math.round(Number(r.yes) / (Number(r.yes) + Number(r.no)) * 100)
+        : 0;
+      setVoteResult(`✅ ${r.message} — 👍 ${r.yes} / 👎 ${r.no} / 🤝 ${r.abstain} (${pct}% yes) — ${r.status.toUpperCase()}`);
+      setVoteId(''); setVoteCitizen(''); setVoteChoice('yes');
+    } catch (err) {
+      setVoteResult(`❌ Error: ${String(err)}`);
+    }
+  };
+
+  const handleFork = async (e) => {
+    e.preventDefault();
+    setForkResult('Forking…');
+    try {
+      const res = await backend.forkBill(BigInt(forkId), forkTitle, forkBody, forkAuthor);
+      if (res.length === 0) { setForkResult('❌ Original bill not found.'); return; }
+      setForkResult(`✅ ${res[0].message} → new Bill #${res[0].bill_id}`);
+      setForkId(''); setForkTitle(''); setForkBody(''); setForkAuthor('');
+    } catch (err) {
+      setForkResult(`❌ Error: ${String(err)}`);
+    }
+  };
+
+  const fetchBills = async () => {
+    try { setBills(await backend.listBills()); }
+    catch { setBills([]); }
+  };
+
+  const statusClass = (s) => {
+    if (s === 'passed') return 'text-green-600 font-bold';
+    if (s === 'rejected') return 'text-red-600 font-bold';
+    return 'text-blue-600';
+  };
+
+  return (
+    <div className="space-y-6 p-4">
+      {/* Propose */}
+      <h2 className="text-lg font-semibold text-gray-700">📜 Propose a Bill</h2>
+      <form onSubmit={handlePropose} className="space-y-3">
+        <input className="w-full rounded border p-2" placeholder="Bill title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <textarea className="w-full rounded border p-2" rows={3} placeholder="Bill body / description" value={body} onChange={(e) => setBody(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder="Author" value={author} onChange={(e) => setAuthor(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder="Category (e.g. Energy, Housing)" value={category} onChange={(e) => setCategory(e.target.value)} required />
+        <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">Propose Bill</button>
+      </form>
+      {proposeStatus && <p className="text-sm text-gray-600">{proposeStatus}</p>}
+
+      <hr />
+
+      {/* Vote */}
+      <h2 className="text-lg font-semibold text-gray-700">🗳️ Cast Vote <span className="text-sm font-normal text-gray-500">(50+1 rule)</span></h2>
+      <p className="text-xs text-gray-400">A bill commits to the Social Ledger once Yes votes exceed 50% of all participating votes.</p>
+      <form onSubmit={handleVote} className="space-y-3">
+        <input className="w-full rounded border p-2" type="number" placeholder="Bill ID" value={voteId} onChange={(e) => setVoteId(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder="Citizen name" value={voteCitizen} onChange={(e) => setVoteCitizen(e.target.value)} required />
+        <select className="w-full rounded border p-2" value={voteChoice} onChange={(e) => setVoteChoice(e.target.value)}>
+          <option value="yes">👍 Yes</option>
+          <option value="no">👎 No</option>
+          <option value="abstain">🤝 Abstain</option>
+        </select>
+        <button type="submit" className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700">Cast Vote</button>
+      </form>
+      {voteResult && <p className="text-sm text-gray-600">{voteResult}</p>}
+
+      <hr />
+
+      {/* Fork */}
+      <h2 className="text-lg font-semibold text-gray-700">🍴 Fork a Bill</h2>
+      <p className="text-xs text-gray-400">Create an amended variant of an existing bill. The fork starts fresh with 0 votes.</p>
+      <form onSubmit={handleFork} className="space-y-3">
+        <input className="w-full rounded border p-2" type="number" placeholder="Original Bill ID" value={forkId} onChange={(e) => setForkId(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder="New title" value={forkTitle} onChange={(e) => setForkTitle(e.target.value)} required />
+        <textarea className="w-full rounded border p-2" rows={2} placeholder="Amended body" value={forkBody} onChange={(e) => setForkBody(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder="Fork author" value={forkAuthor} onChange={(e) => setForkAuthor(e.target.value)} required />
+        <button type="submit" className="rounded bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600">Fork Bill</button>
+      </form>
+      {forkResult && <p className="text-sm text-gray-600">{forkResult}</p>}
+
+      <hr />
+
+      {/* Bill list */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-700">📋 All Bills</h2>
+        <button onClick={fetchBills} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
+      </div>
+      {bills.length === 0
+        ? <p className="text-sm text-gray-500">No bills yet — click Refresh to load.</p>
+        : <ul className="space-y-3">
+            {bills.map((bill) => {
+              const yes = Number(bill.yes_votes);
+              const no  = Number(bill.no_votes);
+              const abs = Number(bill.abstain_votes);
+              const total = yes + no;
+              const pct = total > 0 ? Math.round(yes / total * 100) : 0;
+              return (
+                <li key={Number(bill.id)} className="rounded border p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-mono text-xs text-gray-400">#{Number(bill.id)}</span>
+                      {bill.forked_from.length > 0 && (
+                        <span className="ml-2 rounded bg-yellow-100 px-1 text-xs text-yellow-700">
+                          🍴 fork of #{Number(bill.forked_from[0])}
+                        </span>
+                      )}
+                      <p className="font-semibold">{bill.title}</p>
+                      <p className="text-xs text-gray-500">{bill.author} · {bill.category}</p>
+                    </div>
+                    <span className={`whitespace-nowrap text-xs ${statusClass(bill.status)}`}>
+                      {bill.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-gray-700">{bill.body}</p>
+                  <div className="mt-2 text-xs text-gray-500">
+                    👍 {yes} · 👎 {no} · 🤝 {abs}
+                    {total > 0 && <span className="ml-2 font-medium">{pct}% yes {yes * 2 > total ? '✅' : ''}</span>}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+      }
+    </div>
+  );
+};
+
 // ---- Root App ----
-const TABS = ['Chat', 'Bounties', 'Audit', 'Justice'];
+const TABS = ['Chat', 'Bounties', 'Audit', 'Justice', 'Legislature'];
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('Chat');
@@ -300,10 +469,11 @@ const App = () => {
 
         {/* Tab content */}
         <div className="flex-1 overflow-y-auto">
-          {activeTab === 'Chat'     && <ChatTab />}
-          {activeTab === 'Bounties' && <BountiesTab />}
-          {activeTab === 'Audit'    && <AuditTab />}
-          {activeTab === 'Justice'  && <JusticeTab />}
+          {activeTab === 'Chat'        && <ChatTab />}
+          {activeTab === 'Bounties'    && <BountiesTab />}
+          {activeTab === 'Audit'       && <AuditTab />}
+          {activeTab === 'Justice'     && <JusticeTab />}
+          {activeTab === 'Legislature' && <LegislatureTab />}
         </div>
       </div>
     </div>

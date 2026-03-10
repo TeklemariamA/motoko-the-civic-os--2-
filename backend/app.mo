@@ -50,13 +50,34 @@ actor CivicOS {
     merit : Int;
   };
 
+  /// A legislative bill / proposal that citizens vote on.
+  /// status: "active" | "passed" | "rejected"
+  /// forked_from: ?id of the parent bill when this is a fork
+  public type Bill = {
+    id : Nat;
+    title : Text;
+    body : Text;
+    author : Text;
+    category : Text;
+    status : Text;
+    yes_votes : Nat;
+    no_votes : Nat;
+    abstain_votes : Nat;
+    created_at : Int;
+    forked_from : ?Nat;
+  };
+
   // ---- STABLE STATE ----
 
   stable var nextBountyId : Nat = 1;
   stable var nextCaseId : Nat = 1;
+  stable var nextBillId : Nat = 1;
   stable var bounties : [Bounty] = [];
   stable var auditLog : [AuditEntry] = [];
   stable var cases : [Case] = [];
+  stable var bills : [Bill] = [];
+  // (bill_id, citizen_name, choice) — one row per vote
+  stable var billVotes : [(Nat, Text, Text)] = [];
   stable var users : [User] = [
     { name = "elara"; merit = 50 },
     { name = "devon"; merit = 20 },
@@ -205,6 +226,124 @@ actor CivicOS {
         } else {
           ?{ verdict = "pending"; message = "Vote recorded" }
         }
+      };
+    }
+  };
+
+  // ---- LEGISLATURE ----
+
+  /// Propose a new bill for the community to vote on.
+  public func proposeBill(title : Text, body : Text, author : Text, category : Text) : async { bill_id : Nat; message : Text } {
+    let id = nextBillId;
+    nextBillId += 1;
+    bills := Array.append(
+      bills,
+      [{
+        id;
+        title;
+        body;
+        author;
+        category;
+        status = "active";
+        yes_votes = 0;
+        no_votes = 0;
+        abstain_votes = 0;
+        created_at = Time.now();
+        forked_from = null;
+      }],
+    );
+    { bill_id = id; message = "Bill proposed to the legislature" }
+  };
+
+  /// Cast a vote on an active bill.
+  /// choice must be "yes", "no", or "abstain".
+  /// A bill automatically commits (passes) once yes votes strictly exceed 50 % of
+  /// all participating votes (yes + no), implementing the 50+1 majority rule.
+  /// Returns null if the bill is not found or the citizen has already voted.
+  public func castVote(bill_id : Nat, citizen : Text, choice : Text) : async ?{ yes : Nat; no : Nat; abstain : Nat; status : Text; message : Text } {
+    switch (Array.find<Bill>(bills, func(b) { b.id == bill_id })) {
+      case null null;
+      case (?bill) {
+        if (bill.status != "active") {
+          return ?{
+            yes = bill.yes_votes;
+            no = bill.no_votes;
+            abstain = bill.abstain_votes;
+            status = bill.status;
+            message = "Bill is no longer active";
+          };
+        };
+        // Prevent double-voting
+        if (Array.find<(Nat, Text, Text)>(billVotes, func((bid, cit, _)) { bid == bill_id and cit == citizen }) != null) {
+          return null;
+        };
+        billVotes := Array.append(billVotes, [(bill_id, citizen, choice)]);
+        let newYes = bill.yes_votes + (if (choice == "yes") 1 else 0);
+        let newNo = bill.no_votes + (if (choice == "no") 1 else 0);
+        let newAbstain = bill.abstain_votes + (if (choice == "abstain") 1 else 0);
+        // 50+1 rule: yes must strictly exceed 50% of (yes + no); abstentions excluded.
+        // NOTE: the same formula (yes * 2 > total) is mirrored in the frontend bill-list display.
+        let participating = newYes + newNo;
+        let newStatus = if (participating > 0 and newYes * 2 > participating) "passed"
+                        else bill.status;
+        let updated : Bill = {
+          id = bill.id;
+          title = bill.title;
+          body = bill.body;
+          author = bill.author;
+          category = bill.category;
+          status = newStatus;
+          yes_votes = newYes;
+          no_votes = newNo;
+          abstain_votes = newAbstain;
+          created_at = bill.created_at;
+          forked_from = bill.forked_from;
+        };
+        bills := Array.map<Bill, Bill>(bills, func(b) { if (b.id == bill_id) updated else b });
+        let msg = if (newStatus == "passed")
+          "Bill committed to the Social Ledger — 50+1 majority reached 🎉"
+          else "Vote recorded";
+        ?{ yes = newYes; no = newNo; abstain = newAbstain; status = newStatus; message = msg }
+      };
+    }
+  };
+
+  /// Return a single bill by ID.
+  public query func getBill(bill_id : Nat) : async ?Bill {
+    Array.find<Bill>(bills, func(b) { b.id == bill_id })
+  };
+
+  /// Return all bills (active, passed, rejected).
+  public query func listBills() : async [Bill] {
+    bills
+  };
+
+  /// Fork an existing bill into a new variant with amended title and body.
+  /// The fork starts with 0 votes and status "active".
+  /// Returns null if the original bill does not exist.
+  public func forkBill(original_id : Nat, title : Text, body : Text, author : Text) : async ?{ bill_id : Nat; message : Text } {
+    switch (Array.find<Bill>(bills, func(b) { b.id == original_id })) {
+      case null null;
+      case (?orig) {
+        let id = nextBillId;
+        nextBillId += 1;
+        bills := Array.append(
+          bills,
+          [{
+            id;
+            title;
+            body;
+            author;
+            category = orig.category;
+            status = "active";
+            yes_votes = 0;
+            no_votes = 0;
+            abstain_votes = 0;
+            created_at = Time.now();
+            forked_from = ?original_id;
+          }],
+        );
+        ?{ bill_id = id; message = "Bill forked from #" # Nat.toText(original_id) }
       };
     }
   };
