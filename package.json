@@ -1,6 +1,5 @@
 {
  "name": "llm-chatbot",
- "type": "module",
  "scripts": {
  "dev": "npm run dev --workspaces --if-present",
  "prebuild": "npm run prebuild --workspaces --if-present",
