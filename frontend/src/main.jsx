@@ -8,7 +8,7 @@ import '/index.css';
 // ---- Chat Tab ----
 const ChatTab = () => {
   const [chat, setChat] = useState([
-    { system: { content: "I'm a sovereign AI agent living on the Internet Computer. Ask me anything." } }
+    { assistant: { content: "I'm a sovereign AI agent living on the Internet Computer. Ask me anything." } }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +26,7 @@ const ChatTab = () => {
       setChat((prevChat) => {
         const newChat = [...prevChat];
         newChat.pop();
-        newChat.push({ system: { content: response } });
+        newChat.push({ assistant: { content: response } });
         return newChat;
       });
     } catch (e) {
@@ -44,7 +44,7 @@ const ChatTab = () => {
     e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
     const userMessage = { user: { content: inputValue } };
-    setChat((prev) => [...prev, userMessage, { system: { content: 'Thinking ...' } }]);
+    setChat((prev) => [...prev, userMessage, { assistant: { content: 'Thinking ...' } }]);
     setInputValue('');
     setIsLoading(true);
     askAgent(chat.slice(1).concat(userMessage));
@@ -60,8 +60,8 @@ const ChatTab = () => {
         {chat.map((message, index) => {
           const isUser = 'user' in message;
           const img = isUser ? userImg : botImg;
-          const name = isUser ? 'User' : 'System';
-          const text = isUser ? message.user.content : message.system.content;
+          const name = isUser ? 'User' : 'Assistant';
+          const text = isUser ? message.user.content : message.assistant.content;
           return (
             <div key={index} className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
               {!isUser && <div className="mr-2 h-10 w-10 rounded-full" style={{ backgroundImage: `url(${img})`, backgroundSize: 'cover' }} />}
