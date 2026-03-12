@@ -1,29 +1,20 @@
-# Use Python 3.11 slim image as base
-FROM python:3.11-slim
+FROM node:22-bullseye AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+COPY package*.json ./
+COPY frontend/package*.json ./frontend/
+RUN npm install
 
-# Copy application files
-COPY backend/app.mo /app/app.py
+COPY . .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir \
-    fastapi==0.109.0 \
-    uvicorn[standard]==0.27.0 \
-    pydantic==2.5.3
+RUN npm run build --workspace frontend
 
-# Expose port 8000
-EXPOSE 8000
+FROM nginx:alpine
 
-# Health check using curl (simpler and lighter)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD uvicorn --version || exit 1
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/frontend/dist /usr/share/nginx/html
 
-# Run the application
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

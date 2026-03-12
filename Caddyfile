@@ -1,0 +1,3 @@
+civic-os-opensourcism.cloud {
+    reverse_proxy frontend:80
+}
