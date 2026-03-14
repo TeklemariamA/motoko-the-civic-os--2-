@@ -185,11 +185,17 @@ ssh root@72.61.96.166 "cat ~/.ssh/id_ed25519"
 The public key **must** be in the VPS's `authorized_keys` file — otherwise the
 `appleboy/ssh-action` step will be refused when it tries to connect.
 
-Add the public key (this is safe to run even if it's already listed):
+The command below is fully idempotent: it creates `~/.ssh/` (mode 700) and
+`authorized_keys` (mode 600) if they don't exist, and only appends the key if
+it isn't already listed:
 
 ```bash
-ssh root@72.61.96.166 \
-  "cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+ssh root@72.61.96.166 "
+  mkdir -p ~/.ssh && chmod 700 ~/.ssh
+  touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
+  grep -qF \"\$(cat ~/.ssh/id_ed25519.pub)\" ~/.ssh/authorized_keys \
+    || cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys
+"
 ```
 
 Verify it was added:
@@ -197,6 +203,9 @@ Verify it was added:
 ```bash
 ssh root@72.61.96.166 "cat ~/.ssh/authorized_keys"
 ```
+
+You should see the key line starting with `ssh-ed25519 …` and ending with
+`github-actions-deploy`.
 
 #### 3. Add the private key to GitHub Secrets
 
@@ -263,6 +272,33 @@ ssh root@72.61.96.166 \
 
 Then add the public key to `authorized_keys` (step 2) and paste the private key
 into the `VPS_SSH_KEY` secret (step 3).
+
+**Unable to update or add new SSH key (`SHA256:… github-actions-deploy`)**
+
+This means the key exists on the VPS but its public half is not (or cannot be
+written) to `~/.ssh/authorized_keys`. Common causes:
+- `~/.ssh/` directory does not exist yet.
+- `~/.ssh/authorized_keys` does not exist yet (a bare `>>` redirect will fail
+  if the parent directory is absent).
+- `authorized_keys` or `~/.ssh/` has incorrect permissions (must be 600 and
+  700 respectively).
+
+Use the idempotent command from step 2 above, which handles all of these:
+
+```bash
+ssh root@72.61.96.166 "
+  mkdir -p ~/.ssh && chmod 700 ~/.ssh
+  touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
+  grep -qF \"\$(cat ~/.ssh/id_ed25519.pub)\" ~/.ssh/authorized_keys \
+    || cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys
+"
+```
+
+After running it, verify with:
+
+```bash
+ssh root@72.61.96.166 "cat ~/.ssh/authorized_keys"
+```
 
 **"Key is invalid. You must supply a key in OpenSSH public key format"**
 
