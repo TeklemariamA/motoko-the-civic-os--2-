@@ -135,37 +135,67 @@ secret, not as a deploy key).
 
 ### One-time VPS setup
 
-#### 1. Retrieve the existing private key from the VPS
+#### 1. Obtain (or generate) a private key on the VPS
 
-SSH into the VPS and print the existing private key (use whichever key type is present):
-
-```bash
-ssh root@72.61.96.166 "cat ~/.ssh/id_ed25519"   # ed25519 key (preferred)
-# or
-ssh root@72.61.96.166 "cat ~/.ssh/id_rsa"        # RSA key (if ed25519 doesn't exist)
-# or
-ssh root@72.61.96.166 "cat ~/.ssh/id_ecdsa"      # ECDSA key
-```
-
-To see which keys are available on the VPS:
+First, check what keys are already present:
 
 ```bash
 ssh root@72.61.96.166 "ls -la ~/.ssh/"
 ```
 
-#### 2. Verify the public key is authorised
-
-Make sure the corresponding public key is in the VPS's `authorized_keys` file:
+**Case A — a key file already exists** (`id_ed25519`, `id_rsa`, or `id_ecdsa`):
 
 ```bash
-ssh root@72.61.96.166 "cat ~/.ssh/authorized_keys"
+ssh root@72.61.96.166 "cat ~/.ssh/id_ed25519"   # preferred
+# or
+ssh root@72.61.96.166 "cat ~/.ssh/id_rsa"
+# or
+ssh root@72.61.96.166 "cat ~/.ssh/id_ecdsa"
 ```
 
-If the public key of the key you retrieved in step 1 is not listed there, add it:
+Copy the full output (including the `-----BEGIN` / `-----END` lines) — you will
+paste it into GitHub Secrets in step 3.
+
+**Case B — no key files exist** (you see output like
+`cat: /root/.ssh/id_ed25519: No such file or directory`):
+
+Generate a new key pair directly on the VPS:
+
+```bash
+ssh root@72.61.96.166 \
+  "ssh-keygen -t ed25519 -C 'github-actions-deploy' -N '' -f ~/.ssh/id_ed25519"
+```
+
+> **Security note:** `-N ''` creates a key with no passphrase, which is
+> required for fully automated deployment. The private key is stored encrypted
+> at rest inside GitHub's Actions secrets (AES-256 at the repository level),
+> so the main risk is if someone gains write access to your repository secrets.
+> If you would prefer a passphrase-protected key, omit `-N ''`, set the
+> passphrase, and also add a `VPS_KEY_PASSPHRASE` secret (see *Using a
+> passphrase-protected key* in step 3 below).
+
+Then print the private key so you can copy it:
+
+```bash
+ssh root@72.61.96.166 "cat ~/.ssh/id_ed25519"
+```
+
+#### 2. Authorise the key for SSH login on the VPS
+
+The public key **must** be in the VPS's `authorized_keys` file — otherwise the
+`appleboy/ssh-action` step will be refused when it tries to connect.
+
+Add the public key (this is safe to run even if it's already listed):
 
 ```bash
 ssh root@72.61.96.166 \
   "cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+```
+
+Verify it was added:
+
+```bash
+ssh root@72.61.96.166 "cat ~/.ssh/authorized_keys"
 ```
 
 #### 3. Add the private key to GitHub Secrets
@@ -174,7 +204,7 @@ Go to **Settings → Secrets and variables → Actions → New repository secret
 
 | Secret name | Value |
 |---|---|
-| `VPS_SSH_KEY` | Full output of `cat ~/.ssh/id_ed25519` (or the key file you retrieved above) |
+| `VPS_SSH_KEY` | Full output of `cat ~/.ssh/id_ed25519` (private key retrieved or generated in step 1) |
 
 > **Important:** Copy the *entire* file contents, including the header and
 > footer, which must be **exactly**:
@@ -220,6 +250,19 @@ git push → main
 
 
 ## Troubleshooting
+
+**`cat: /root/.ssh/id_ed25519: No such file or directory`**
+
+The VPS has no SSH key pair yet. Follow *Case B* in step 1 of *One-time VPS
+setup* above to generate one:
+
+```bash
+ssh root@72.61.96.166 \
+  "ssh-keygen -t ed25519 -C 'github-actions-deploy' -N '' -f ~/.ssh/id_ed25519"
+```
+
+Then add the public key to `authorized_keys` (step 2) and paste the private key
+into the `VPS_SSH_KEY` secret (step 3).
 
 **"Key is invalid. You must supply a key in OpenSSH public key format"**
 
