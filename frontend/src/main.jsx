@@ -9,7 +9,7 @@ import '/index.css';
 // ---- Chat Tab ----
 const ChatTab = () => {
   const [chat, setChat] = useState([
-    { assistant: { content: "I'm a sovereign AI agent living on the Internet Computer. Ask me anything." } }
+    { system: { content: "I'm a sovereign AI agent living on the Internet Computer. Ask me anything." } }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -81,9 +81,21 @@ const ChatTab = () => {
       <div className="flex-1 overflow-y-auto bg-gray-100 p-4" ref={chatBoxRef}>
         {chat.map((message, index) => {
           const isUser = 'user' in message;
+          const isSystem = 'system' in message;
           const img = isUser ? userImg : botImg;
-          const name = isUser ? 'User' : 'Assistant';
-          const text = isUser ? message.user.content : message.assistant.content;
+          const name = isUser ? 'User' : isSystem ? 'System' : 'Assistant';
+          const text = isUser ? message.user.content : isSystem ? message.system.content : message.assistant.content;
+          if (isSystem) {
+            return (
+              <div key={index} className="mb-4 flex justify-center">
+                <div className="max-w-[85%] rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-center text-sm text-blue-700 shadow-sm">
+                  <span className="mr-2 font-semibold text-blue-500">System</span>
+                  <span className="mr-2 text-xs text-blue-400">{formatDate(new Date())}</span>
+                  <span>{text}</span>
+                </div>
+              </div>
+            );
+          }
           return (
             <div key={index} className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
               {!isUser && <div className="mr-2 h-10 w-10 rounded-full" style={{ backgroundImage: `url(${img})`, backgroundSize: 'cover' }} />}
@@ -797,8 +809,68 @@ const LegislatureTab = () => {
   );
 };
 
+// ---- System Tab ----
+const MODULES = [
+  { name: 'Chat',        icon: '💬', desc: 'Sovereign AI agent powered by on-chain LLM' },
+  { name: 'Bounties',    icon: '💰', desc: 'Time-decayed reward tasks for civic contributors' },
+  { name: 'Audit',       icon: '🔍', desc: 'ZK-proof privacy-preserving public audit log' },
+  { name: 'Justice',     icon: '⚖️',  desc: 'Decentralized case filing and jury verdicts' },
+  { name: 'Membership',  icon: '🪪', desc: 'Citizen enrollment, roles, and merit system' },
+  { name: 'Commons',     icon: '📚', desc: 'Skill commits, open science, and AI charter' },
+  { name: 'Legislature', icon: '📜', desc: 'Bill proposals, voting, and democratic forking' },
+];
+
+const SystemTab = () => {
+  const [canisterStatus, setCanisterStatus] = useState('Checking…');
+
+  useEffect(() => {
+    backend.listBills()
+      .then(() => setCanisterStatus('✅ Connected'))
+      .catch(() => setCanisterStatus('⚠️ Stub mode — deploy backend canister for live data'));
+  }, []);
+
+  return (
+    <div className="space-y-6 p-4">
+      <h2 className="text-lg font-semibold text-gray-700">⚙️ System Status</h2>
+
+      {/* Network card */}
+      <div className="rounded-lg border bg-blue-50 p-4">
+        <div className="flex items-center justify-between">
+          <span className="font-medium text-blue-800">Internet Computer Network</span>
+          <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">IC Mainnet</span>
+        </div>
+        <p className="mt-1 text-sm text-blue-700">Backend canister: <span className="font-mono">{canisterStatus}</span></p>
+      </div>
+
+      {/* Modules */}
+      <div>
+        <h3 className="mb-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">Active Modules</h3>
+        <ul className="space-y-2">
+          {MODULES.map((m) => (
+            <li key={m.name} className="flex items-start gap-3 rounded border bg-white p-3 shadow-sm">
+              <span className="text-xl">{m.icon}</span>
+              <div>
+                <p className="font-semibold text-gray-800 text-sm">{m.name}</p>
+                <p className="text-xs text-gray-500">{m.desc}</p>
+              </div>
+              <span className="ml-auto mt-0.5 rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">active</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* About */}
+      <div className="rounded-lg border bg-gray-50 p-4 text-xs text-gray-500 space-y-1">
+        <p><span className="font-semibold">CivicOS v2.0</span> — The Purist Protocol</p>
+        <p>Runtime: Motoko · Internet Computer · on-chain LLM (mo:llm)</p>
+        <p>Sovereign AI · No central servers · Censorship-resistant</p>
+      </div>
+    </div>
+  );
+};
+
 // ---- Root App ----
-const TABS = ['Chat', 'Bounties', 'Audit', 'Justice', 'Membership', 'Commons', 'Legislature'];
+const TABS = ['Chat', 'Bounties', 'Audit', 'Justice', 'Membership', 'Commons', 'Legislature', 'System'];
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('Chat');
@@ -886,6 +958,7 @@ const App = () => {
           {activeTab === 'Membership'  && <MembershipTab />}
           {activeTab === 'Commons'     && <KnowledgeCommonsTab />}
           {activeTab === 'Legislature' && <LegislatureTab />}
+          {activeTab === 'System'      && <SystemTab />}
         </div>
       </div>
     </div>
