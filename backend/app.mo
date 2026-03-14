@@ -15,7 +15,7 @@ actor CivicOS {
 
   // ---- DATA TYPES ----
 
-  public type ChatMessage = { #user : { content : Text }; #system : { content : Text } };
+  public type ChatMessage = { #user : { content : Text }; #assistant : { content : Text } };
 
   public type Bounty = {
     id : Nat;
@@ -131,7 +131,7 @@ actor CivicOS {
       func(msg) {
         switch (msg) {
           case (#user { content }) { { role = #user; content } };
-          case (#system { content }) { { role = #assistant; content } };
+          case (#assistant { content }) { { role = #assistant; content } };
         }
       },
     );
