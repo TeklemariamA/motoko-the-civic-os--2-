@@ -191,7 +191,7 @@ const AuditTab = () => {
       <hr />
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-700">Public Audit Log</h2>
-        <button onClick={handleFetchLog} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
+        <button type="button" onClick={handleFetchLog} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
       </div>
       {log.length === 0
         ? <p className="text-sm text-gray-500">No entries yet.</p>
@@ -362,7 +362,7 @@ const MembershipTab = () => {
 
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-700">👥 All Members</h2>
-        <button onClick={fetchMembers} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
+        <button type="button" onClick={fetchMembers} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
       </div>
       {members.length === 0
         ? <p className="text-sm text-gray-500">No members yet — click Refresh to load.</p>
@@ -562,7 +562,7 @@ const KnowledgeCommonsTab = () => {
             <hr />
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-gray-700">Research Registry</h2>
-              <button onClick={fetchResearch} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
+              <button type="button" onClick={fetchResearch} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
             </div>
             {research.length === 0
               ? <p className="text-sm text-gray-500">No records yet.</p>
@@ -733,7 +733,7 @@ const LegislatureTab = () => {
       {/* Bill list */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-700">📋 All Bills</h2>
-        <button onClick={fetchBills} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
+        <button type="button" onClick={fetchBills} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
       </div>
       {bills.length === 0
         ? <p className="text-sm text-gray-500">No bills yet — click Refresh to load.</p>

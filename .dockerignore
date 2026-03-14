@@ -28,7 +28,6 @@ README.md
 .devcontainer/
 
 # Dependencies
-package-lock.json
 mops.toml
 
 # Environment

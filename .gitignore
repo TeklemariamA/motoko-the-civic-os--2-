@@ -15,6 +15,7 @@ frontend/dist/
 .dfx/
 .env
 canister_ids.json
+src/declarations/
 
 # Misc
 .DS_Store
