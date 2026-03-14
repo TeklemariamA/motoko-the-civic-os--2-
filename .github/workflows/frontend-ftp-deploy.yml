@@ -1,0 +1,74 @@
+name: Deploy frontend to civic-os-opensourcism.cloud
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create backend declarations stub
+        run: |
+          mkdir -p src/declarations/backend
+          cat > src/declarations/backend/index.js << 'STUB'
+          // Static deployment stub – the Internet Computer backend canister is not
+          // available in this hosting deployment.
+          // For full functionality, deploy via `dfx deploy --network ic`.
+          export const canisterId = '';
+          export const backend = {
+            chat:             async () => { throw new Error('not configured'); },
+            createBounty:     async () => { throw new Error('not configured'); },
+            getBountyValue:   async () => [],
+            privateAction:    async () => { throw new Error('not configured'); },
+            publicLog:        async () => [],
+            fileCase:         async () => { throw new Error('not configured'); },
+            castVerdict:      async () => [],
+            enrollMember:     async () => { throw new Error('not configured'); },
+            getMember:        async () => [],
+            listMembers:      async () => [],
+            commitSkill:      async () => [],
+            endorseSkill:     async () => [],
+            listSkillCommits: async () => [],
+            publishResearch:  async () => { throw new Error('not configured'); },
+            listResearch:     async () => [],
+            proposeBill:      async () => { throw new Error('not configured'); },
+            castVote:         async () => [],
+            forkBill:         async () => [],
+            listBills:        async () => [],
+          };
+          STUB
+
+      - name: Build production assets
+        working-directory: frontend
+        run: ../node_modules/.bin/vite build
+
+      - name: Deploy to Hostinger via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: srv1163-files.hstgr.io
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./frontend/dist/
+          server-dir: /public_html/
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
