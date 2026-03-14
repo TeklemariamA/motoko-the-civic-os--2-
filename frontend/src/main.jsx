@@ -882,6 +882,7 @@ const LegislatureTab = () => {
 
 // ---- System Tab ----
 const MODULES = [
+  { name: 'Home',        icon: '🏛️', desc: 'Dashboard — full platform overview and module navigator' },
   { name: 'Chat',        icon: '💬', desc: 'Sovereign AI agent powered by on-chain LLM' },
   { name: 'Bounties',    icon: '💰', desc: 'Time-decayed reward tasks for civic contributors' },
   { name: 'Audit',       icon: '🔍', desc: 'ZK-proof privacy-preserving public audit log' },
@@ -893,12 +894,28 @@ const MODULES = [
 
 const SystemTab = () => {
   const [canisterStatus, setCanisterStatus] = useState('Checking…');
+  const [swStatus, setSwStatus] = useState('');
 
   useEffect(() => {
     backend.listBills()
       .then(() => setCanisterStatus('✅ Connected'))
       .catch(() => setCanisterStatus('⚠️ Stub mode — deploy backend canister for live data'));
   }, []);
+
+  const handleForceRefresh = async () => {
+    setSwStatus('Checking for updates…');
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if (reg) {
+        await reg.update();
+        setSwStatus('✅ Up to date! If you still see old content, close all tabs of this app and reopen it.');
+      } else {
+        setSwStatus('No service worker found. Try closing all tabs of this app and reopening it.');
+      }
+    } catch {
+      setSwStatus('Could not check for updates. Try closing all tabs and reopening the app.');
+    }
+  };
 
   return (
     <div className="space-y-6 p-4">
@@ -911,6 +928,25 @@ const SystemTab = () => {
           <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">IC Mainnet</span>
         </div>
         <p className="mt-1 text-sm text-blue-700">Backend canister: <span className="font-mono">{canisterStatus}</span></p>
+      </div>
+
+      {/* Force refresh card */}
+      <div className="rounded-lg border bg-amber-50 p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-amber-800">App Version &amp; Cache</span>
+          <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">CivicOS v2.0</span>
+        </div>
+        <p className="text-xs text-amber-700">
+          If you see outdated content, click "Check for update" to force the app to fetch the latest version.
+        </p>
+        <button
+          type="button"
+          onClick={handleForceRefresh}
+          className="rounded bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 active:scale-95"
+        >
+          🔄 Check for update
+        </button>
+        {swStatus && <p className="text-xs text-amber-800 mt-1">{swStatus}</p>}
       </div>
 
       {/* Modules */}
@@ -958,17 +994,17 @@ const App = () => {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installed, setInstalled] = useState(false);
 
-  // Detect new service worker and reload to apply the latest version immediately.
-  const { needRefresh: [needRefresh] } = useRegisterSW({
+  // Detect new service worker and show a prominent refresh prompt.
+  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW({
     onRegistered(r) {
-      // Poll for updates every 60 s so long-lived sessions pick up new deploys.
-      if (r) setInterval(() => r.update(), 60_000);
+      if (!r) return;
+      // Poll every 30 s so long-lived sessions pick up new deploys promptly.
+      setInterval(() => r.update(), 30_000);
+      // Also check immediately when user switches back to this tab.
+      const onVisible = () => { if (document.visibilityState === 'visible') r.update(); };
+      document.addEventListener('visibilitychange', onVisible);
     },
   });
-
-  useEffect(() => {
-    if (needRefresh) window.location.reload();
-  }, [needRefresh]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -991,8 +1027,14 @@ const App = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       {needRefresh && (
-        <div className="fixed inset-x-0 top-0 z-50 bg-blue-600 py-2 text-center text-sm font-medium text-white">
-          🔄 Updating to the latest version…
+        <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-3 bg-indigo-700 px-4 py-2 text-sm font-medium text-white shadow-lg">
+          <span>🔄 New version of The Civic OS is ready!</span>
+          <button
+            onClick={() => updateServiceWorker(true)}
+            className="rounded bg-white px-3 py-1 text-xs font-bold text-indigo-700 hover:bg-indigo-50 active:scale-95"
+          >
+            Refresh now
+          </button>
         </div>
       )}
       <div className="flex h-[85vh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-lg">

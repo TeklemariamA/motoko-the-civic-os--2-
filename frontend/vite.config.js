@@ -11,7 +11,7 @@ export default defineConfig({
     environment('all', { prefix: 'CANISTER_' }),
     environment('all', { prefix: 'DFX_' }),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.ico', 'pwa-192.png', 'pwa-512.png'],
       manifest: {
         name: 'The Civic OS',
@@ -29,7 +29,6 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        skipWaiting: true,
         clientsClaim: true,
       },
     }),
