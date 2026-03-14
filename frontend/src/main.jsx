@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 import { backend } from 'declarations/backend';
 import botImg from '/bot.svg';
 import userImg from '/user.svg';
@@ -804,6 +805,18 @@ const App = () => {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installed, setInstalled] = useState(false);
 
+  // Detect new service worker and reload to apply the latest version immediately.
+  const { needRefresh: [needRefresh] } = useRegisterSW({
+    onRegistered(r) {
+      // Poll for updates every 60 s so long-lived sessions pick up new deploys.
+      if (r) setInterval(() => r.update(), 60_000);
+    },
+  });
+
+  useEffect(() => {
+    if (needRefresh) window.location.reload();
+  }, [needRefresh]);
+
   useEffect(() => {
     const handler = (e) => {
       e.preventDefault();
@@ -824,6 +837,11 @@ const App = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+      {needRefresh && (
+        <div className="fixed inset-x-0 top-0 z-50 bg-blue-600 py-2 text-center text-sm font-medium text-white">
+          🔄 Updating to the latest version…
+        </div>
+      )}
       <div className="flex h-[85vh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-lg">
         {/* App header / brand */}
         <div className="flex items-center justify-between border-b bg-blue-600 px-4 py-2 rounded-t-lg">
