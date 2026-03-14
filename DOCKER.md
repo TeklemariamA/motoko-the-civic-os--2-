@@ -93,25 +93,43 @@ docker pull ghcr.io/teklemariama/motoko-the-civic-os--2-:latest
 The `vps-deploy.yml` workflow automatically deploys to the Hostinger KVM VPS
 (Ubuntu 24.04, `72.61.96.166`) after every successful image push to GHCR.
 
-### ⚠️ What to update — and what NOT to touch
+### Authentication overview — what uses what
 
-> **Do NOT delete all SSH/GPG keys** from your GitHub account settings
-> (`github.com → Settings → SSH and GPG keys`). Those are your personal
-> Git access keys and are completely separate from this deployment.
+| Purpose | Mechanism | Where it lives |
+|---|---|---|
+| Check out source code in CI | Built-in `GITHUB_TOKEN` | Automatic — no setup needed |
+| Push Docker image to GHCR | Built-in `GITHUB_TOKEN` | Automatic — no setup needed |
+| SSH into VPS to run `docker pull` | `VPS_SSH_KEY` repo secret | Settings → Secrets → Actions |
+| **Deploy keys (SSH keys on the repo)** | **Not used** | **Not needed** |
 
-The only thing you need to change is the **`VPS_SSH_KEY` repository secret**
-(a single encrypted value stored under *this repository's* settings).
+### ⚠️ Deploy key "Hostinger Docker2" — safe to delete
 
-**To replace the current broken secret with the correct one:**
+> **Yes, you can delete the "Hostinger Docker2" deploy key.**
+>
+> Go to **Settings → Security → Deploy keys**, click the key, click **Delete**.
+> No workflow in this repository uses it. Deleting it removes an unnecessary
+> Read/write credential without breaking anything.
+
+**Why it is safe to delete:** The "Hostinger Docker2" key (fingerprint
+`SHA256:rED+WrgtnrEe6Jkj6WNJSsfimFCgnEpnChgp7xirq3A`, added Feb 2026) was
+created during early Hostinger/VPS setup, before the deployment was changed to
+a Docker-pull model. The VPS deployment now works by pulling a pre-built Docker
+image (`docker pull ghcr.io/…`). The VPS never clones the repository over SSH,
+so no deploy key is needed. The only SSH credential required is `VPS_SSH_KEY` —
+the private key used to SSH *into the VPS server itself* (stored as a repository
+secret, not as a deploy key).
+
+**What NOT to delete** — the `VPS_SSH_KEY` repository secret:
 
 1. Go to `https://github.com/TeklemariamA/motoko-the-civic-os--2-/settings/secrets/actions`
 2. Click **`VPS_SSH_KEY`** in the list.
 3. Click **Update** (not Delete — updating replaces the value in place).
-4. Paste the complete private key from your VPS (see step 1 below).
+4. Paste the complete private key retrieved from your VPS (see step 1 below).
 5. Click **Save changes**.
 
-That's all. Your personal SSH/GPG keys, deploy keys, and all other secrets are
-left completely untouched.
+> **Do NOT delete keys from your GitHub account** (`github.com → Settings →
+> SSH and GPG keys`). Those are your personal Git access keys and are
+> completely separate from this deployment.
 
 ---
 
