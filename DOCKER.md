@@ -136,9 +136,14 @@ What is actually needed:
 If you generated a new key pair but accidentally added the public key as a
 deploy key instead:
 
-1. **Delete** the deploy key from Settings → Security → Deploy keys.
+1. **Delete** the deploy key — use the automated workflow:  
+   Go to **Actions → Audit and Remove Deploy Keys → Run workflow**,
+   select `delete_keys = true`, and click **Run workflow**.  
+   *Or* delete manually at Settings → Security → Deploy keys.
 2. **Update** the `VPS_SSH_KEY` secret with the private key (step 3 below).
 3. **Verify** the public key is in the VPS's `authorized_keys` (step 2 above).
+4. **Confirm** the cleanup worked by re-running the workflow with
+   `delete_keys = false` — it should report "No deploy keys found".
 
 **What NOT to delete** — the `VPS_SSH_KEY` repository secret:
 

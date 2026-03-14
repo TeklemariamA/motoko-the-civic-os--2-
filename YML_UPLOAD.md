@@ -26,6 +26,7 @@ The `upload-yml-hosting.yml` workflow automatically uploads all `.yml` workflow 
 4. Verifies the upload
 
 ### Files Uploaded
+- audit-deploy-keys.yml
 - datadog-synthetics.yml
 - docker-push.yml
 - generator-generic-ossf-slsa3-publish.yml
@@ -34,6 +35,7 @@ The `upload-yml-hosting.yml` workflow automatically uploads all `.yml` workflow 
 - npm-publish.yml
 - pages-deploy.yml
 - upload-yml-hosting.yml (this workflow itself)
+- vps-deploy.yml
 
 ## Required Secrets
 

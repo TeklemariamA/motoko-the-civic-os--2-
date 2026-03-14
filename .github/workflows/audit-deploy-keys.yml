@@ -1,0 +1,83 @@
+name: Audit and Remove Deploy Keys
+
+# This workflow lists (and optionally deletes) all repository deploy keys.
+# No workflow in this repository needs a deploy key – the VPS deployment uses
+# the VPS_SSH_KEY Actions secret instead (see DOCKER.md).
+#
+# Run this workflow manually to:
+#   1. Verify no deploy keys are present after cleanup.
+#   2. Remove any lingering deploy keys in a single click.
+#
+# The GITHUB_TOKEN is granted `administration: write` which gives it permission
+# to list and delete deploy keys via the GitHub REST API.
+
+on:
+  workflow_dispatch:
+    inputs:
+      delete_keys:
+        description: 'Delete all deploy keys found? (true = delete, false = list only)'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  contents: read
+  administration: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: List deploy keys
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== Deploy keys for ${{ github.repository }} ==="
+          COUNT=$(gh api "repos/${{ github.repository }}/keys" --jq 'length')
+          echo "Total deploy keys: $COUNT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo ""
+            echo "✅  No deploy keys found – repository is clean."
+            exit 0
+          fi
+
+          echo ""
+          gh api "repos/${{ github.repository }}/keys" \
+            --jq '.[] | "  ID: \(.id)  |  Title: \(.title)  |  Added: \(.created_at)  |  Last used: \(.last_used // "never")  |  Read-only: \(.read_only)"'
+
+          echo ""
+          echo "⚠️  $COUNT deploy key(s) found."
+          echo "    This repository does not need any deploy keys."
+          echo "    Run this workflow again with 'delete_keys = true' to remove them,"
+          echo "    or delete them manually at:"
+          echo "    https://github.com/${{ github.repository }}/settings/keys"
+
+      - name: Delete all deploy keys
+        if: ${{ inputs.delete_keys == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== Deleting all deploy keys for ${{ github.repository }} ==="
+
+          KEY_IDS=$(gh api "repos/${{ github.repository }}/keys" --jq '.[].id')
+
+          if [ -z "$KEY_IDS" ]; then
+            echo "✅  No deploy keys to delete."
+            exit 0
+          fi
+
+          for KEY_ID in $KEY_IDS; do
+            TITLE=$(gh api "repos/${{ github.repository }}/keys/$KEY_ID" --jq '.title')
+            echo "Deleting deploy key: ID=$KEY_ID  title='$TITLE'"
+            gh api --method DELETE "repos/${{ github.repository }}/keys/$KEY_ID"
+            echo "  ✓ Deleted."
+          done
+
+          echo ""
+          echo "✅  All deploy keys removed."
+          echo "    The VPS_SSH_KEY Actions secret remains untouched."
+          echo "    Verify at: https://github.com/${{ github.repository }}/settings/keys"
