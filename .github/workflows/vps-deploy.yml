@@ -18,13 +18,10 @@ name: Deploy to Hostinger VPS
 #       -----END OPENSSH PRIVATE KEY-----
 #     (five dashes on each side – copy the file with `cat ~/.ssh/id_ed25519`)
 #
-#     ⚠  Recommendation: generate a dedicated unencrypted deploy key so that
-#        no passphrase is needed:
-#          ssh-keygen -t ed25519 -C "github-actions-deploy" \
-#            -f ~/.ssh/civic_os_deploy -N ""
-#        Then copy the PUBLIC key to the VPS:
-#          ssh-copy-id -i ~/.ssh/civic_os_deploy.pub root@72.61.96.166
-#        And paste the PRIVATE key into the VPS_SSH_KEY secret.
+#     Retrieve the existing private key from the VPS:
+#          ssh root@72.61.96.166 "cat ~/.ssh/id_ed25519"   # or id_rsa / id_ecdsa
+#     and paste the complete output as the secret value.
+#     If the key is passphrase-protected, also set VPS_KEY_PASSPHRASE below.
 #
 # ── Optional secrets ─────────────────────────────────────────────────────────
 #   VPS_KEY_PASSPHRASE

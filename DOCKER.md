@@ -95,22 +95,37 @@ The `vps-deploy.yml` workflow automatically deploys to the Hostinger KVM VPS
 
 ### One-time VPS setup
 
-#### 1. Generate a dedicated deploy key (recommended: unencrypted)
+#### 1. Retrieve the existing private key from the VPS
 
-Run this **on your local machine** (not on the VPS):
+SSH into the VPS and print the existing private key (use whichever key type is present):
 
 ```bash
-# -N "" creates an unencrypted key – no passphrase needed in CI
-ssh-keygen -t ed25519 -C "github-actions-deploy" \
-  -f ~/.ssh/civic_os_deploy -N ""
+ssh root@72.61.96.166 "cat ~/.ssh/id_ed25519"   # ed25519 key (preferred)
+# or
+ssh root@72.61.96.166 "cat ~/.ssh/id_rsa"        # RSA key (if ed25519 doesn't exist)
+# or
+ssh root@72.61.96.166 "cat ~/.ssh/id_ecdsa"      # ECDSA key
 ```
 
-#### 2. Authorise the key on the VPS
+To see which keys are available on the VPS:
 
 ```bash
-ssh-copy-id -i ~/.ssh/civic_os_deploy.pub root@72.61.96.166
-# verify login works before continuing
-ssh -i ~/.ssh/civic_os_deploy root@72.61.96.166 echo "OK"
+ssh root@72.61.96.166 "ls -la ~/.ssh/"
+```
+
+#### 2. Verify the public key is authorised
+
+Make sure the corresponding public key is in the VPS's `authorized_keys` file:
+
+```bash
+ssh root@72.61.96.166 "cat ~/.ssh/authorized_keys"
+```
+
+If the public key of the key you retrieved in step 1 is not listed there, add it:
+
+```bash
+ssh root@72.61.96.166 \
+  "cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
 ```
 
 #### 3. Add the private key to GitHub Secrets
@@ -119,7 +134,7 @@ Go to **Settings → Secrets and variables → Actions → New repository secret
 
 | Secret name | Value |
 |---|---|
-| `VPS_SSH_KEY` | Full contents of `~/.ssh/civic_os_deploy` |
+| `VPS_SSH_KEY` | Full output of `cat ~/.ssh/id_ed25519` (or the key file you retrieved above) |
 
 > **Important:** Copy the *entire* file contents, including the header and
 > footer, which must be **exactly**:
@@ -175,8 +190,9 @@ malformed. Common causes:
 - The key was accidentally truncated when pasting.
 - The key is passphrase-protected but `VPS_KEY_PASSPHRASE` is not set.
 
-Fix: re-paste the *complete* private key file contents and, if the key is
-encrypted, add the `VPS_KEY_PASSPHRASE` secret (see *VPS Deployment* above).
+Fix: re-run `ssh root@72.61.96.166 "cat ~/.ssh/id_ed25519"` (or `id_rsa`),
+copy the *complete* output into the `VPS_SSH_KEY` secret, and if the key is
+encrypted, set the `VPS_KEY_PASSPHRASE` secret (see *VPS Deployment* above).
 
 **General build failures**
 
