@@ -6,6 +6,69 @@ import botImg from '/bot.svg';
 import userImg from '/user.svg';
 import '/index.css';
 
+// ---- Home / Dashboard Tab ----
+const CIVIC_MODULES = [
+  { id: 'Chat',        icon: '💬', label: 'AI Agent',    color: 'bg-blue-50 border-blue-200 text-blue-800',   desc: 'Sovereign on-chain AI assistant — ask about governance, policy, and digital rights.' },
+  { id: 'Bounties',    icon: '💰', label: 'Bounties',    color: 'bg-yellow-50 border-yellow-200 text-yellow-800', desc: 'Time-escalating reward tasks for civic contributors.' },
+  { id: 'Audit',       icon: '🔍', label: 'Audit',       color: 'bg-gray-50 border-gray-200 text-gray-800',   desc: 'ZK-proof, privacy-preserving public audit log — see WHAT happened, not WHO.' },
+  { id: 'Justice',     icon: '⚖️',  label: 'Justice',    color: 'bg-red-50 border-red-200 text-red-800',      desc: 'Decentralized case filing and merit-weighted jury verdicts.' },
+  { id: 'Membership',  icon: '🪪', label: 'Citizenship', color: 'bg-indigo-50 border-indigo-200 text-indigo-800', desc: 'Enroll as a Citizen, Scholar, Builder or Steward and build your merit score.' },
+  { id: 'Commons',     icon: '📚', label: 'Commons',     color: 'bg-teal-50 border-teal-200 text-teal-800',   desc: 'Skill commits, open-science research, and the AI Bill of Rights.' },
+  { id: 'Legislature', icon: '📜', label: 'Legislature', color: 'bg-purple-50 border-purple-200 text-purple-800', desc: 'Propose bills, vote (50+1 rule), and fork legislation — democratic governance on-chain.' },
+  { id: 'System',      icon: '⚙️',  label: 'System',     color: 'bg-green-50 border-green-200 text-green-800',  desc: 'Live canister status and active module registry.' },
+];
+
+const HomeTab = ({ onNavigate }) => {
+  const [status, setStatus] = useState('Checking…');
+
+  useEffect(() => {
+    backend.listBills()
+      .then(() => setStatus('✅ Connected to Internet Computer'))
+      .catch(() => setStatus('⚠️ Stub mode — deploy backend canister for live data'));
+  }, []);
+
+  return (
+    <div className="space-y-5 p-4">
+      {/* Hero */}
+      <div className="rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 p-5 text-white shadow-md">
+        <h1 className="text-2xl font-extrabold tracking-tight">The Civic OS</h1>
+        <p className="mt-1 text-sm text-blue-100">A sovereign civic platform on the Internet Computer</p>
+        <p className="mt-3 text-xs text-blue-200 leading-relaxed">
+          Built on Motoko · Censorship-resistant · No central servers · On-chain AI (LLM)
+        </p>
+        <div className="mt-3 inline-block rounded bg-white/20 px-3 py-1 text-xs font-semibold">
+          {status}
+        </div>
+      </div>
+
+      {/* Module grid */}
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400">Civic Modules</h2>
+      <ul className="grid grid-cols-2 gap-2">
+        {CIVIC_MODULES.map((m) => (
+          <li key={m.id}>
+            <button
+              onClick={() => onNavigate(m.id)}
+              className={`w-full rounded-lg border p-3 text-left transition-all hover:shadow-md active:scale-95 ${m.color}`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{m.icon}</span>
+                <span className="text-xs font-bold">{m.label}</span>
+              </div>
+              <p className="mt-1 text-xs leading-snug opacity-75">{m.desc}</p>
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {/* Footer tagline */}
+      <div className="rounded-lg border bg-gray-50 p-3 text-center text-xs text-gray-400">
+        <p className="font-semibold text-gray-600">CivicOS v2.0 — The Purist Protocol</p>
+        <p className="mt-0.5">Sovereign AI · Open-Source · Internet Computer · Motoko</p>
+      </div>
+    </div>
+  );
+};
+
 // ---- Chat Tab ----
 const ChatTab = () => {
   const [chat, setChat] = useState([
@@ -879,6 +942,7 @@ const SystemTab = () => {
 
 // ---- Root App ----
 const TABS = [
+  { id: 'Home',        label: '🏛️ Home' },
   { id: 'Chat',        label: '💬 Chat' },
   { id: 'Bounties',    label: '💰 Bounties' },
   { id: 'Audit',       label: '🔍 Audit' },
@@ -890,7 +954,7 @@ const TABS = [
 ];
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState('Chat');
+  const [activeTab, setActiveTab] = useState('Home');
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installed, setInstalled] = useState(false);
 
@@ -981,6 +1045,7 @@ const App = () => {
 
         {/* Tab content */}
         <div className="flex-1 overflow-y-auto">
+          {activeTab === 'Home'        && <HomeTab onNavigate={setActiveTab} />}
           {activeTab === 'Chat'        && <ChatTab />}
           {activeTab === 'Bounties'    && <BountiesTab />}
           {activeTab === 'Audit'       && <AuditTab />}
