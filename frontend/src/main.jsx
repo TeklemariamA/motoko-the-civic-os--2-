@@ -805,6 +805,12 @@ const App = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <div className="flex h-[85vh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-lg">
+        {/* App header / brand */}
+        <div className="flex items-center justify-between border-b bg-blue-600 px-4 py-2 rounded-t-lg">
+          <span className="text-lg font-bold tracking-wide text-white">The Civic OS</span>
+          <span className="text-xs text-blue-200">Sovereign AI · Internet Computer</span>
+        </div>
+
         {/* Tab bar */}
         <div className="flex border-b">
           {TABS.map((tab) => (
