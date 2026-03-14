@@ -801,6 +801,26 @@ const TABS = ['Chat', 'Bounties', 'Audit', 'Justice', 'Membership', 'Commons', '
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('Chat');
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [installed, setInstalled] = useState(false);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => setInstalled(true));
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') setInstalled(true);
+    setInstallPrompt(null);
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
@@ -808,7 +828,18 @@ const App = () => {
         {/* App header / brand */}
         <div className="flex items-center justify-between border-b bg-blue-600 px-4 py-2 rounded-t-lg">
           <span className="text-lg font-bold tracking-wide text-white">The Civic OS</span>
-          <span className="text-xs text-blue-200">Sovereign AI · Internet Computer</span>
+          <div className="flex items-center gap-3">
+            {!installed && installPrompt && (
+              <button
+                onClick={handleInstall}
+                className="rounded bg-white px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50"
+                title="Install The Civic OS on this device"
+              >
+                ⬇ Install App
+              </button>
+            )}
+            <span className="text-xs text-blue-200">Sovereign AI · Internet Computer</span>
+          </div>
         </div>
 
         {/* Tab bar */}
