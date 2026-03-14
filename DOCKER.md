@@ -93,6 +93,28 @@ docker pull ghcr.io/teklemariama/motoko-the-civic-os--2-:latest
 The `vps-deploy.yml` workflow automatically deploys to the Hostinger KVM VPS
 (Ubuntu 24.04, `72.61.96.166`) after every successful image push to GHCR.
 
+### ⚠️ What to update — and what NOT to touch
+
+> **Do NOT delete all SSH/GPG keys** from your GitHub account settings
+> (`github.com → Settings → SSH and GPG keys`). Those are your personal
+> Git access keys and are completely separate from this deployment.
+
+The only thing you need to change is the **`VPS_SSH_KEY` repository secret**
+(a single encrypted value stored under *this repository's* settings).
+
+**To replace the current broken secret with the correct one:**
+
+1. Go to `https://github.com/TeklemariamA/motoko-the-civic-os--2-/settings/secrets/actions`
+2. Click **`VPS_SSH_KEY`** in the list.
+3. Click **Update** (not Delete — updating replaces the value in place).
+4. Paste the complete private key from your VPS (see step 1 below).
+5. Click **Save changes**.
+
+That's all. Your personal SSH/GPG keys, deploy keys, and all other secrets are
+left completely untouched.
+
+---
+
 ### One-time VPS setup
 
 #### 1. Retrieve the existing private key from the VPS
