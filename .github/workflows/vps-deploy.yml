@@ -1,13 +1,20 @@
 name: Deploy to Hostinger VPS
 
 # Runs after the Docker image is built and pushed to GHCR.
-# SSHes into the Hostinger VPS, pulls the new image, and restarts the container
-# so that civic-os-opensourcism.cloud always serves the latest build.
+# SSHes into the Hostinger VPS (Ubuntu 24.04, IP 72.61.96.166), pulls the new
+# image, and restarts the container so that civic-os-opensourcism.cloud always
+# serves the latest build.
 #
-# Required repository secrets:
-#   VPS_HOST     – public IP or hostname of the Hostinger VPS
-#   VPS_USER     – SSH login user (e.g. root or ubuntu)
-#   VPS_SSH_KEY  – private SSH key whose public key is in the VPS ~/.ssh/authorized_keys
+# VPS details (non-sensitive – hardcoded below):
+#   host     : 72.61.96.166
+#   username : root
+#
+# Required repository secret  (Settings → Secrets → Actions):
+#   VPS_SSH_KEY  – contents of the private key whose public key is in
+#                  /root/.ssh/authorized_keys on the VPS
+#
+# Optional secret (needed only if the GHCR package is set to private):
+#   GHCR_TOKEN   – GitHub PAT with read:packages scope
 
 on:
   workflow_run:
@@ -19,6 +26,13 @@ on:
 permissions:
   contents: read
 
+env:
+  # civic-os-opensourcism.cloud – Hostinger KVM VPS, Ubuntu 24.04
+  VPS_HOST: 72.61.96.166
+  VPS_USER: root
+  # Sanitized image name: ghcr.io/teklemariama/motoko-the-civic-os-2:latest
+  IMAGE: ghcr.io/teklemariama/motoko-the-civic-os-2:latest
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -26,22 +40,22 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - name: Compute sanitized image name
-        id: image
-        run: |
-          SAFE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]' | sed 's/--/-/g' | sed 's/-$//')
-          echo "name=ghcr.io/${SAFE}:latest" >> "$GITHUB_OUTPUT"
-
       - name: Deploy to VPS via SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2  # v1.2.5
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
+          host: ${{ env.VPS_HOST }}
+          username: ${{ env.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          envs: IMAGE,GHCR_TOKEN
           script: |
             set -e
 
-            IMAGE="${{ steps.image.outputs.name }}"
+            # Log in to GHCR if a token was supplied (required for private packages)
+            if [ -n "$GHCR_TOKEN" ]; then
+              echo "$GHCR_TOKEN" | docker login ghcr.io -u github-actions --password-stdin
+            fi
 
             echo "Pulling latest image: $IMAGE"
             docker pull "$IMAGE"
@@ -50,7 +64,7 @@ jobs:
             docker stop civic-os 2>/dev/null || true
             docker rm   civic-os 2>/dev/null || true
 
-            echo "Starting new container..."
+            echo "Starting new container on port 80..."
             docker run -d \
               --name civic-os \
               --restart unless-stopped \
@@ -60,4 +74,4 @@ jobs:
             echo "Removing dangling images..."
             docker image prune -f
 
-            echo "Deployment complete. civic-os-opensourcism.cloud is now serving the latest build."
+            echo "Deployment complete – civic-os-opensourcism.cloud is live."
