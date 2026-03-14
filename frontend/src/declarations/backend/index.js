@@ -1,35 +1,33 @@
-export const backend = {
-  chat: async (...args) => {
-    throw new Error('Backend actor not configured in this deployment. Connect the generated canister declarations or deploy the backend canister.');
-  },
-  createBounty: async (...args) => {
-    throw new Error('Backend actor not configured in this deployment. Connect the generated canister declarations or deploy the backend canister.');
-  },
-  getBountyValue: async (...args) => [],
-  privateAction: async (...args) => {
-    throw new Error('Backend actor not configured in this deployment. Connect the generated canister declarations or deploy the backend canister.');
-  },
-  publicLog: async (...args) => [],
-  fileCase: async (...args) => {
-    throw new Error('Backend actor not configured in this deployment. Connect the generated canister declarations or deploy the backend canister.');
-  },
-  castVerdict: async (...args) => [],
-  enrollMember: async (...args) => {
-    throw new Error('Backend actor not configured in this deployment. Connect the generated canister declarations or deploy the backend canister.');
-  },
-  getMember: async (...args) => [],
-  listMembers: async (...args) => [],
-  commitSkill: async (...args) => [],
-  endorseSkill: async (...args) => [],
-  listSkillCommits: async (...args) => [],
-  publishResearch: async (...args) => {
-    throw new Error('Backend actor not configured in this deployment. Connect the generated canister declarations or deploy the backend canister.');
-  },
-  listResearch: async (...args) => [],
-  proposeBill: async (...args) => {
-    throw new Error('Backend actor not configured in this deployment. Connect the generated canister declarations or deploy the backend canister.');
-  },
-  castVote: async (...args) => [],
-  listBills: async (...args) => [],
-  forkBill: async (...args) => []
+import { Actor, HttpAgent } from "@dfinity/agent";
+
+import { idlFactory } from "./backend.did.js";
+export { idlFactory } from "./backend.did.js";
+
+export const canisterId = process.env.CANISTER_ID_BACKEND;
+
+export const createActor = (canisterId, options = {}) => {
+  const agent = options.agent || new HttpAgent({ ...options.agentOptions });
+
+  if (options.agent && options.agentOptions) {
+    console.warn(
+      "Detected both agent and agentOptions passed to createActor. Ignoring agentOptions and proceeding with the provided agent."
+    );
+  }
+
+  if (process.env.DFX_NETWORK !== "ic") {
+    agent.fetchRootKey().catch((err) => {
+      console.warn(
+        "Unable to fetch root key. Check to ensure that your local replica is running"
+      );
+      console.error(err);
+    });
+  }
+
+  return Actor.createActor(idlFactory, {
+    agent,
+    canisterId,
+    ...options.actorOptions,
+  });
 };
+
+export const backend = createActor(canisterId);
