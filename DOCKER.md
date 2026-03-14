@@ -104,17 +104,13 @@ The `vps-deploy.yml` workflow automatically deploys to the Hostinger KVM VPS
 
 ### ✅ Deploy key cleanup — completed
 
-No workflow in this repository uses deploy keys.  The keys below have been
-audited; the `github-actions-deploy` key was deleted on 14 Mar 2026.
+No workflow in this repository uses deploy keys.  Both previously-listed keys
+(`Hostinger Docker2` and `github-actions-deploy`) have been removed from
+Settings → Security → Deploy keys.  The repository deploy key list is now
+empty.
 
-| Name / comment | Fingerprint | Added | Status |
-|---|---|---|---|
-| Hostinger Docker2 | `SHA256:rED+WrgtnrEe6Jkj6WNJSsfimFCgnEpnChgp7xirq3A` | Feb 2026 | Delete if still present |
-| github-actions-deploy | `SHA256:gR/cWqXgSxYLIh/MfTHq7l3CqDbD+iktx6eDdka/5Zc` | Mar 2026 | **Deleted ✓** |
-
-> To verify the repository is fully clean, run  
-> **Actions → Audit and Remove Deploy Keys → Run workflow** with
-> `delete_keys = false`.  It should report "No deploy keys found".
+> To confirm, run **Actions → Audit and Remove Deploy Keys → Run workflow**
+> with `delete_keys = false` — it should report "No deploy keys found".
 
 **Why they are safe to delete:** The VPS deployment works by pulling a
 pre-built Docker image (`docker pull ghcr.io/…`). The VPS never clones this
