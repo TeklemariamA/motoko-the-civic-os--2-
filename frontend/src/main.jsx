@@ -21,8 +21,14 @@ const ChatTab = () => {
   };
 
   const askAgent = async (messages) => {
+    const TIMEOUT_MS = 30_000;
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS);
+    });
     try {
-      const response = await backend.chat(messages);
+      const response = await Promise.race([backend.chat(messages), timeoutPromise]);
+      clearTimeout(timeoutId);
       setChat((prevChat) => {
         const newChat = [...prevChat];
         newChat.pop();
@@ -30,11 +36,26 @@ const ChatTab = () => {
         return newChat;
       });
     } catch (e) {
-      console.log(e);
+      clearTimeout(timeoutId);
+      console.error(e);
       const eStr = String(e);
-      const match = eStr.match(/(SysTransient|CanisterReject), \\+"([^\\"]+)/);
-      if (match) alert(match[2]);
-      setChat((prevChat) => { const updatedChat = [...prevChat]; updatedChat.pop(); return updatedChat; });
+      let errMsg;
+      const icMatch = eStr.match(/(SysTransient|CanisterReject), \\+"([^\\"]+)/);
+      if (icMatch) {
+        errMsg = `⚠️ ${icMatch[2]}`;
+      } else if (e.message === 'timeout') {
+        errMsg = '⏱️ The AI agent took too long to respond. Please try again.';
+      } else if (eStr.includes('not configured') || eStr.includes('is not a function')) {
+        errMsg = '⚠️ The AI backend is not available in this deployment. Deploy the backend canister on the Internet Computer to enable live chat.';
+      } else {
+        errMsg = `❌ Error: ${eStr.slice(0, 200)}`;
+      }
+      setChat((prevChat) => {
+        const updated = [...prevChat];
+        updated.pop();
+        updated.push({ assistant: { content: errMsg } });
+        return updated;
+      });
     } finally {
       setIsLoading(false);
     }

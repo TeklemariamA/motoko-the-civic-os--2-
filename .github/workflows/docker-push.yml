@@ -28,7 +28,11 @@ jobs:
       - name: Sanitize image name
         id: image
         run: |
-          # Docker tags cannot contain consecutive hyphens; replace -- with -
+          # Docker tags must be lowercase and cannot contain consecutive hyphens.
+          # This repo name ends with a hyphen (motoko-the-civic-os--2-), so we:
+          #   1. Lowercase the full "owner/repo" string
+          #   2. Collapse "--" → "-" (Docker rejects consecutive hyphens in tags)
+          #   3. Strip any trailing hyphen left after step 2
           SAFE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]' | sed 's/--/-/g' | sed 's/-$//')
           echo "name=$SAFE" >> "$GITHUB_OUTPUT"
 

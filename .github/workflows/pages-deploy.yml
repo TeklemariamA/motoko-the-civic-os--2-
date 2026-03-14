@@ -29,25 +29,39 @@ jobs:
           node-version: '20.x'
           cache: 'npm'
 
-      - name: Install dfx (Internet Computer SDK)
-        run: |
-          DFXVM_INIT_YES=true DFX_VERSION=0.24.3 sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
-          echo "$HOME/.local/share/dfx/bin" >> $GITHUB_PATH
-
-      - name: Verify dfx installation
-        run: dfx --version
-
-      - name: Install mops (Motoko package manager)
-        run: npm install -g ic-mops
-
       - name: Install project dependencies
         run: npm ci
 
-      - name: Install Motoko dependencies
-        run: mops install
-
-      - name: Build frontend (with prebuild step)
-        run: npm run prebuild
+      - name: Create backend declarations stub for static deployment
+        run: |
+          mkdir -p src/declarations/backend
+          cat > src/declarations/backend/index.js << 'STUB'
+          // Static deployment stub – the Internet Computer backend canister is not
+          // available in this GitHub Pages deployment.
+          // For full functionality, deploy via `dfx deploy --network ic`.
+          export const canisterId = '';
+          export const backend = {
+            chat:            async () => { throw new Error('not configured'); },
+            createBounty:    async () => { throw new Error('not configured'); },
+            getBountyValue:  async () => [],
+            privateAction:   async () => { throw new Error('not configured'); },
+            publicLog:       async () => [],
+            fileCase:        async () => { throw new Error('not configured'); },
+            castVerdict:     async () => [],
+            enrollMember:    async () => { throw new Error('not configured'); },
+            getMember:       async () => [],
+            listMembers:     async () => [],
+            commitSkill:     async () => [],
+            endorseSkill:    async () => [],
+            listSkillCommits:async () => [],
+            publishResearch: async () => { throw new Error('not configured'); },
+            listResearch:    async () => [],
+            proposeBill:     async () => { throw new Error('not configured'); },
+            castVote:        async () => [],
+            forkBill:        async () => [],
+            listBills:       async () => [],
+          };
+          STUB
 
       - name: Build production assets
         run: npm run build
