@@ -102,18 +102,19 @@ The `vps-deploy.yml` workflow automatically deploys to the Hostinger KVM VPS
 | SSH into VPS to run `docker pull` | `VPS_SSH_KEY` repo secret | Settings → Secrets → Actions |
 | **Deploy keys (SSH keys on the repo)** | **Not used** | **Not needed** |
 
-### ⚠️ All repository deploy keys are safe to delete
+### ✅ Deploy key cleanup — completed
 
-> **Yes, you can delete every deploy key listed under Settings → Security →
-> Deploy keys.**  No workflow in this repository uses any of them.  Deleting
-> them removes unnecessary Read/write credentials without breaking anything.
+No workflow in this repository uses deploy keys.  The keys below have been
+audited; the `github-actions-deploy` key was deleted on 14 Mar 2026.
 
-Known deploy keys that are not needed and can be deleted:
+| Name / comment | Fingerprint | Added | Status |
+|---|---|---|---|
+| Hostinger Docker2 | `SHA256:rED+WrgtnrEe6Jkj6WNJSsfimFCgnEpnChgp7xirq3A` | Feb 2026 | Delete if still present |
+| github-actions-deploy | `SHA256:gR/cWqXgSxYLIh/MfTHq7l3CqDbD+iktx6eDdka/5Zc` | Mar 2026 | **Deleted ✓** |
 
-| Name / comment | Fingerprint | Added |
-|---|---|---|
-| Hostinger Docker2 | `SHA256:rED+WrgtnrEe6Jkj6WNJSsfimFCgnEpnChgp7xirq3A` | Feb 2026 |
-| github-actions-deploy | `SHA256:gR/cWqXgSxYLIh/MfTHq7l3CqDbD+iktx6eDdka/5Zc` | Mar 2026 |
+> To verify the repository is fully clean, run  
+> **Actions → Audit and Remove Deploy Keys → Run workflow** with
+> `delete_keys = false`.  It should report "No deploy keys found".
 
 **Why they are safe to delete:** The VPS deployment works by pulling a
 pre-built Docker image (`docker pull ghcr.io/…`). The VPS never clones this
@@ -134,12 +135,13 @@ What is actually needed:
 | GitHub repository deploy keys | *(not needed — leave empty)* | The VPS never SSH-clones the repo |
 
 If you generated a new key pair but accidentally added the public key as a
-deploy key instead:
+deploy key instead (as happened with `github-actions-deploy` in Mar 2026 —
+now corrected):
 
-1. **Delete** the deploy key — use the automated workflow:  
-   Go to **Actions → Audit and Remove Deploy Keys → Run workflow**,
-   select `delete_keys = true`, and click **Run workflow**.  
-   *Or* delete manually at Settings → Security → Deploy keys.
+1. ~~**Delete** the deploy key~~ — **done ✓** (`github-actions-deploy` deleted
+   14 Mar 2026).  For future incidents, use **Actions → Audit and Remove Deploy
+   Keys → Run workflow** with `delete_keys = true`, or remove manually at
+   Settings → Security → Deploy keys.
 2. **Update** the `VPS_SSH_KEY` secret with the private key (step 3 below).
 3. **Verify** the public key is in the VPS's `authorized_keys` (step 2 above).
 4. **Confirm** the cleanup worked by re-running the workflow with
