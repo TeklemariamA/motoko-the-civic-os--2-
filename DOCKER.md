@@ -102,22 +102,43 @@ The `vps-deploy.yml` workflow automatically deploys to the Hostinger KVM VPS
 | SSH into VPS to run `docker pull` | `VPS_SSH_KEY` repo secret | Settings → Secrets → Actions |
 | **Deploy keys (SSH keys on the repo)** | **Not used** | **Not needed** |
 
-### ⚠️ Deploy key "Hostinger Docker2" — safe to delete
+### ⚠️ All repository deploy keys are safe to delete
 
-> **Yes, you can delete the "Hostinger Docker2" deploy key.**
->
-> Go to **Settings → Security → Deploy keys**, click the key, click **Delete**.
-> No workflow in this repository uses it. Deleting it removes an unnecessary
-> Read/write credential without breaking anything.
+> **Yes, you can delete every deploy key listed under Settings → Security →
+> Deploy keys.**  No workflow in this repository uses any of them.  Deleting
+> them removes unnecessary Read/write credentials without breaking anything.
 
-**Why it is safe to delete:** The "Hostinger Docker2" key (fingerprint
-`SHA256:rED+WrgtnrEe6Jkj6WNJSsfimFCgnEpnChgp7xirq3A`, added Feb 2026) was
-created during early Hostinger/VPS setup, before the deployment was changed to
-a Docker-pull model. The VPS deployment now works by pulling a pre-built Docker
-image (`docker pull ghcr.io/…`). The VPS never clones the repository over SSH,
-so no deploy key is needed. The only SSH credential required is `VPS_SSH_KEY` —
-the private key used to SSH *into the VPS server itself* (stored as a repository
-secret, not as a deploy key).
+Known deploy keys that are not needed and can be deleted:
+
+| Name / comment | Fingerprint | Added |
+|---|---|---|
+| Hostinger Docker2 | `SHA256:rED+WrgtnrEe6Jkj6WNJSsfimFCgnEpnChgp7xirq3A` | Feb 2026 |
+| github-actions-deploy | `SHA256:gR/cWqXgSxYLIh/MfTHq7l3CqDbD+iktx6eDdka/5Zc` | Mar 2026 |
+
+**Why they are safe to delete:** The VPS deployment works by pulling a
+pre-built Docker image (`docker pull ghcr.io/…`). The VPS never clones this
+repository over SSH, so no deploy key is needed.
+
+**Common mistake — adding the VPS key as a deploy key:**  
+When you generate an SSH key pair on the VPS with a comment like
+`github-actions-deploy`, it is tempting to upload the public key as a
+repository deploy key on GitHub. However, a deploy key would only let the VPS
+pull/push *the repository* over SSH — which this workflow never does.
+
+What is actually needed:
+
+| Where the key goes | Which half | Purpose |
+|---|---|---|
+| `VPS_SSH_KEY` GitHub Actions secret | **Private** key (`cat ~/.ssh/id_ed25519`) | Lets GitHub Actions SSH *into* the VPS |
+| VPS `~/.ssh/authorized_keys` | **Public** key (`id_ed25519.pub`) | Lets the VPS accept that incoming SSH connection |
+| GitHub repository deploy keys | *(not needed — leave empty)* | The VPS never SSH-clones the repo |
+
+If you generated a new key pair but accidentally added the public key as a
+deploy key instead:
+
+1. **Delete** the deploy key from Settings → Security → Deploy keys.
+2. **Update** the `VPS_SSH_KEY` secret with the private key (step 3 below).
+3. **Verify** the public key is in the VPS's `authorized_keys` (step 2 above).
 
 **What NOT to delete** — the `VPS_SSH_KEY` repository secret:
 
