@@ -1,0 +1,63 @@
+name: Deploy to Hostinger VPS
+
+# Runs after the Docker image is built and pushed to GHCR.
+# SSHes into the Hostinger VPS, pulls the new image, and restarts the container
+# so that civic-os-opensourcism.cloud always serves the latest build.
+#
+# Required repository secrets:
+#   VPS_HOST     – public IP or hostname of the Hostinger VPS
+#   VPS_USER     – SSH login user (e.g. root or ubuntu)
+#   VPS_SSH_KEY  – private SSH key whose public key is in the VPS ~/.ssh/authorized_keys
+
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Image"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Only deploy when the upstream docker-push workflow succeeded
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Compute sanitized image name
+        id: image
+        run: |
+          SAFE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]' | sed 's/--/-/g' | sed 's/-$//')
+          echo "name=ghcr.io/${SAFE}:latest" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+
+            IMAGE="${{ steps.image.outputs.name }}"
+
+            echo "Pulling latest image: $IMAGE"
+            docker pull "$IMAGE"
+
+            echo "Stopping old container (if running)..."
+            docker stop civic-os 2>/dev/null || true
+            docker rm   civic-os 2>/dev/null || true
+
+            echo "Starting new container..."
+            docker run -d \
+              --name civic-os \
+              --restart unless-stopped \
+              -p 80:8000 \
+              "$IMAGE"
+
+            echo "Removing dangling images..."
+            docker image prune -f
+
+            echo "Deployment complete. civic-os-opensourcism.cloud is now serving the latest build."
