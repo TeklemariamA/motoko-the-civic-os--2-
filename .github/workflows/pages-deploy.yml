@@ -64,7 +64,8 @@ jobs:
           STUB
 
       - name: Build production assets
-        run: npm run build
+        working-directory: frontend
+        run: ../node_modules/.bin/vite build
 
       - name: Upload artifact for Pages
         uses: actions/upload-pages-artifact@v3
