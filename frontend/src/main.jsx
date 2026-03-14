@@ -9,7 +9,7 @@ import '/index.css';
 // ---- Chat Tab ----
 const ChatTab = () => {
   const [chat, setChat] = useState([
-    { system: { content: "I'm a sovereign AI agent living on the Internet Computer. Ask me anything." } }
+    { system: { content: "Welcome to The Civic OS — a sovereign AI civic platform on the Internet Computer. I'm your on-chain AI assistant. Ask me about governance, policy, digital rights, or use the tabs above to engage with bounties, justice, legislature, and more." } }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -104,7 +104,15 @@ const ChatTab = () => {
                   <div>{name}</div>
                   <div className="mx-2">{formatDate(new Date())}</div>
                 </div>
-                <div>{text}</div>
+                <div className="whitespace-pre-wrap">
+                  {text === 'Thinking ...' ? (
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="h-2 w-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </span>
+                  ) : text}
+                </div>
               </div>
               {isUser && <div className="ml-2 h-10 w-10 rounded-full" style={{ backgroundImage: `url(${img})`, backgroundSize: 'cover' }} />}
             </div>
@@ -870,7 +878,16 @@ const SystemTab = () => {
 };
 
 // ---- Root App ----
-const TABS = ['Chat', 'Bounties', 'Audit', 'Justice', 'Membership', 'Commons', 'Legislature', 'System'];
+const TABS = [
+  { id: 'Chat',        label: '💬 Chat' },
+  { id: 'Bounties',    label: '💰 Bounties' },
+  { id: 'Audit',       label: '🔍 Audit' },
+  { id: 'Justice',     label: '⚖️ Justice' },
+  { id: 'Membership',  label: '🪪 Members' },
+  { id: 'Commons',     label: '📚 Commons' },
+  { id: 'Legislature', label: '📜 Legislature' },
+  { id: 'System',      label: '⚙️ System' },
+];
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('Chat');
@@ -918,33 +935,46 @@ const App = () => {
         {/* App header / brand */}
         <div className="flex items-center justify-between border-b bg-blue-600 px-4 py-2 rounded-t-lg">
           <span className="text-lg font-bold tracking-wide text-white">The Civic OS</span>
-          <div className="flex items-center gap-3">
-            {!installed && installPrompt && (
+          <div className="flex items-center gap-2">
+            {!installed && (
               <button
-                onClick={handleInstall}
-                className="rounded bg-white px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50"
-                title="Install The Civic OS on this device"
+                onClick={installPrompt ? handleInstall : undefined}
+                title={installPrompt ? 'Install The Civic OS on this device' : 'Open browser menu → "Add to Home Screen" to install'}
+                className={`rounded px-3 py-1 text-xs font-semibold transition-colors ${
+                  installPrompt
+                    ? 'bg-white text-blue-600 hover:bg-blue-50 cursor-pointer'
+                    : 'bg-blue-500 border border-blue-300 text-blue-100 cursor-default'
+                }`}
               >
                 ⬇ Install App
               </button>
             )}
-            <span className="text-xs text-blue-200">Sovereign AI · Internet Computer</span>
+            <a
+              href="https://github.com/TeklemariamA/motoko-the-civic-os--2-"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded px-2 py-1 text-xs text-blue-200 hover:text-white hover:underline underline-offset-2"
+              title="View source on GitHub"
+            >
+              ⭐ GitHub
+            </a>
+            <span className="hidden sm:inline text-xs text-blue-200">Sovereign AI · ICP</span>
           </div>
         </div>
 
         {/* Tab bar */}
-        <div className="flex border-b">
-          {TABS.map((tab) => (
+        <div className="flex overflow-x-auto border-b scrollbar-none">
+          {TABS.map(({ id, label }) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                activeTab === tab
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`shrink-0 px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap ${
+                activeTab === id
                   ? 'border-b-2 border-blue-500 text-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {tab}
+              {label}
             </button>
           ))}
         </div>
