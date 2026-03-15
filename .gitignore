@@ -2,3 +2,4 @@
 node_modules/
 frontend/package.json.bak
 motoko-the-civic-os--2-/
+frontend/dist/

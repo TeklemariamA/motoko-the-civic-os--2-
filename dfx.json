@@ -8,6 +8,7 @@
     },
     "frontend": {
       "dependencies": ["backend"],
+      "build": "npm --prefix frontend run build",
       "frontend": {
         "entrypoint": "frontend/index.html"
       },
