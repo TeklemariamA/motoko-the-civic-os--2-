@@ -1,11 +1,11 @@
 {
- "name": "llm-chatbot",
- "type": "module",
- "scripts": {
- "dev": "npm run dev --workspaces --if-present",
- "prebuild": "npm run prebuild --workspaces --if-present",
- "build": "npm run build --workspaces --if-present",
- "start": "npm run dev --workspaces --if-present"
- },
- "workspaces": ["frontend"]
+  "name": "the-civic-os",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "prebuild": "npm run prebuild --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "start": "npm run dev --workspaces --if-present"
+  },
+  "workspaces": ["frontend"]
 }
