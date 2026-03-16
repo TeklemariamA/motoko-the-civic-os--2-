@@ -1,5 +1,5 @@
 {
- "name": "llm-chatbot",
+ "name": "civic-os",
  "type": "module",
  "scripts": {
  "dev": "npm run dev --workspaces --if-present",
