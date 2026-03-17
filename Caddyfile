@@ -1,3 +1,8 @@
-civic-os-opensourcism.cloud {
+civic-os-opensourcism.cloud, www.civic-os-opensourcism.cloud {
     reverse_proxy frontend:80
+}
+
+# Legacy/typo hostname redirect to canonical domain.
+civic-os-openssourcism.cloud, www.civic-os-openssourcism.cloud {
+    redir https://civic-os-opensourcism.cloud{uri} permanent
 }

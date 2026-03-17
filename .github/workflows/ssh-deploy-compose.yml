@@ -1,0 +1,70 @@
+name: Deploy Compose Stack via SSH
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - Caddyfile
+      - docker-compose.yml
+      - Dockerfile
+      - frontend/**
+      - .github/workflows/ssh-deploy-compose.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_BRANCH: ${{ github.ref_name }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      SKIP_BUILD: ${{ secrets.DEPLOY_SKIP_BUILD || 'false' }}
+
+    steps:
+      - name: Validate required secrets
+        run: |
+          set -e
+          for var in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH; do
+            if [ -z "${!var}" ]; then
+              echo "Missing required secret/config: $var"
+              exit 1
+            fi
+          done
+
+      - name: Add SSH private key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy on remote host
+        run: |
+          set -euo pipefail
+          REMOTE_BUILD_CMD='docker compose up -d --build'
+          if [ "$SKIP_BUILD" = "true" ]; then
+            REMOTE_BUILD_CMD='docker compose up -d'
+          fi
+
+          ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" <<EOF
+            set -euo pipefail
+            cd "$DEPLOY_PATH"
+
+            # Keep deploy host in sync with repository.
+            git fetch --all --prune
+            git checkout "$DEPLOY_BRANCH"
+            git pull origin "$DEPLOY_BRANCH"
+
+            $REMOTE_BUILD_CMD
+
+            echo "Deployment completed on \\$(hostname) at \\$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+            docker compose ps
+          EOF

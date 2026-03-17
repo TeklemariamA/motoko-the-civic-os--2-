@@ -40,6 +40,31 @@ The GitHub Actions workflow automatically builds and pushes the Docker image to 
   - `.github/workflows/docker-push.yml`
 - Manually triggered via workflow dispatch
 
+For direct server deployment, this repository also includes
+`.github/workflows/ssh-deploy-compose.yml`, which SSH-deploys the compose stack
+on pushes to `main`.
+
+### SSH Auto-Deploy Setup
+
+Add these repository secrets before enabling automatic server deployments:
+
+- `DEPLOY_HOST`: Hostname or IP of your server
+- `DEPLOY_USER`: SSH user with access to the deployment directory
+- `DEPLOY_SSH_PRIVATE_KEY`: Private key for `DEPLOY_USER`
+- `DEPLOY_PATH`: Absolute path to this repo on the server
+- `DEPLOY_PORT`: Optional SSH port (default `22`)
+
+The workflow executes this sequence on the server:
+
+```bash
+cd "$DEPLOY_PATH"
+git fetch --all --prune
+git checkout main
+git pull origin main
+docker compose up -d --build
+docker compose ps
+```
+
 ### Authentication
 
 The workflow uses the built-in `GITHUB_TOKEN` for authentication with GitHub Container Registry. No additional secrets need to be configured.
@@ -89,6 +114,48 @@ docker pull ghcr.io/teklemariama/motoko-the-civic-os--2-:latest
 ```
 
 ## Troubleshooting
+
+### Domain not loading
+
+If `https://civic-os-opensourcism.cloud` is not loading, check these in order:
+
+1. DNS points to your server IP:
+  ```bash
+  dig +short civic-os-opensourcism.cloud
+  dig +short www.civic-os-opensourcism.cloud
+  ```
+2. Ports 80 and 443 are open on your server/firewall.
+3. The stack is running:
+  ```bash
+  docker compose ps
+  ```
+4. Caddy can reach the frontend container:
+  ```bash
+  docker compose logs --tail=200 caddy
+  docker compose logs --tail=200 frontend
+  ```
+
+The repo includes a Caddy redirect from the typo domain
+`civic-os-openssourcism.cloud` to the canonical
+`civic-os-opensourcism.cloud`, but DNS must still exist for any host you want
+to accept traffic for.
+
+### Deploy/redeploy the web stack
+
+From the project root on the target server:
+
+```bash
+docker compose down
+docker compose up -d --build
+docker compose logs -f caddy
+```
+
+Then verify:
+
+```bash
+curl -I http://civic-os-opensourcism.cloud
+curl -I https://civic-os-opensourcism.cloud
+```
 
 If the build fails:
 1. Check the GitHub Actions logs
