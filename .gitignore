@@ -1,4 +1,5 @@
 .dfx/
+.mops/
 node_modules/
 frontend/package.json.bak
 frontend/dist/
