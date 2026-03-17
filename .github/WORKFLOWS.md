@@ -150,6 +150,38 @@ https://srv1163-files.hstgr.io/bf74c39f6227ae6c/files/public_html/Civic-Os/
 
 For complete setup and usage instructions, see [YML_UPLOAD.md](../YML_UPLOAD.md).
 
+### 9. SSH Deploy Compose Stack (`ssh-deploy-compose.yml`) ✨ NEW
+
+**Purpose:** Automatically deploy the Docker Compose stack to your server over SSH after pushes to `main`.
+
+**Triggers:**
+- Push to `main` (when deployment-relevant files change)
+- Manual workflow dispatch
+
+**What it does:**
+1. Validates required deployment configuration
+2. Connects to your server with an SSH private key
+3. Pulls the latest code in your server-side checkout
+4. Runs `docker compose up -d --build` (or `docker compose up -d` if `skip_build=true`)
+5. Prints `docker compose ps` for quick verification
+
+**Required Secrets:**
+- `DEPLOY_HOST`: Target server hostname/IP
+- `DEPLOY_USER`: SSH username
+- `DEPLOY_SSH_PRIVATE_KEY`: Private key for deployment user
+- `DEPLOY_PATH`: Absolute path of repo checkout on server
+- `DEPLOY_PORT`: Optional SSH port (defaults to `22`)
+- `DEPLOY_SKIP_BUILD`: Optional; set to `true` to run `docker compose up -d` instead of `--build`
+
+**Manual Run Behavior:**
+- Use the workflow's branch selector (`Run workflow` -> `Use workflow from`) to choose the branch.
+
+Helper script (from repo root):
+
+```bash
+./scripts/setup-ssh-deploy-secrets-and-run.sh
+```
+
 ## Best Practices
 
 1. **Security:**
