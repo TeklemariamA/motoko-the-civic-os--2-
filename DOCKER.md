@@ -42,7 +42,7 @@ The GitHub Actions workflow automatically builds and pushes the Docker image to 
 
 For direct server deployment, this repository also includes
 `.github/workflows/ssh-deploy-compose.yml`, which SSH-deploys the compose stack
-on pushes to `main`.
+on pushes to the configured deployment branches.
 
 ### SSH Auto-Deploy Setup
 
@@ -53,17 +53,25 @@ Add these repository secrets before enabling automatic server deployments:
 - `DEPLOY_SSH_PRIVATE_KEY`: Private key for `DEPLOY_USER`
 - `DEPLOY_PATH`: Absolute path to this repo on the server
 - `DEPLOY_PORT`: Optional SSH port (default `22`)
+- `DEPLOY_HEALTHCHECK_URL`: Optional URL to verify after deploy, for example `https://civic-os-opensourcism.cloud`
 
 The workflow executes this sequence on the server:
 
 ```bash
 cd "$DEPLOY_PATH"
 git fetch --all --prune
-git checkout main
-git pull origin main
+git checkout "$GITHUB_REF_NAME"
+git pull origin "$GITHUB_REF_NAME"
 docker compose up -d --build
 docker compose ps
 ```
+
+Recommended setup for this repository:
+
+- Deploy branch: `copilot/ssh-deploy-from-main`
+- Healthcheck URL: `https://civic-os-opensourcism.cloud`
+
+After secrets are configured, any push to `copilot/ssh-deploy-from-main` that changes frontend, Docker, Caddy, scripts, or the deploy workflow will trigger a fresh deployment automatically.
 
 ### Authentication
 

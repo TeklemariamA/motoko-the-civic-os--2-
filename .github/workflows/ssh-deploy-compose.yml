@@ -2,14 +2,21 @@ name: Deploy Compose Stack via SSH
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - copilot/ssh-deploy-from-main
     paths:
       - Caddyfile
       - docker-compose.yml
       - Dockerfile
       - frontend/**
+      - scripts/**
       - .github/workflows/ssh-deploy-compose.yml
   workflow_dispatch:
+
+concurrency:
+  group: ssh-deploy-${{ github.ref_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -24,6 +31,7 @@ jobs:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       SKIP_BUILD: ${{ secrets.DEPLOY_SKIP_BUILD || 'false' }}
+      DEPLOY_HEALTHCHECK_URL: ${{ secrets.DEPLOY_HEALTHCHECK_URL }}
 
     steps:
       - name: Validate required secrets
@@ -67,4 +75,12 @@ jobs:
 
             echo "Deployment completed on \\$(hostname) at \\$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
             docker compose ps
+            docker compose logs --tail=50 caddy || true
+            docker compose logs --tail=50 frontend || true
           EOF
+
+      - name: Verify deployed endpoint
+        if: ${{ env.DEPLOY_HEALTHCHECK_URL != '' }}
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 10 --retry-delay 6 --retry-all-errors "$DEPLOY_HEALTHCHECK_URL" >/dev/null
