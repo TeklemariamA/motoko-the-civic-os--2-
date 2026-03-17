@@ -5,10 +5,68 @@ import botImg from '/bot.svg';
 import userImg from '/user.svg';
 import '/index.css';
 
+const SYSTEM_MODULES = [
+  {
+    name: 'Chat',
+    description: 'Constitutional AI interface for civic guidance, public reasoning, and system navigation.'
+  },
+  {
+    name: 'Bounties',
+    description: 'Post and track incentive-backed public work, problem solving, and community missions.'
+  },
+  {
+    name: 'Audit',
+    description: 'Record verifiable actions and expose a public accountability log for governance events.'
+  },
+  {
+    name: 'Justice',
+    description: 'File disputes, assign jurors, and register verdicts through transparent civic procedure.'
+  },
+  {
+    name: 'Membership',
+    description: 'Enroll citizens, discover members, and inspect public profiles, roles, and merit.'
+  },
+  {
+    name: 'Commons',
+    description: 'Manage skill commits, open science publishing, and the shared knowledge charter.'
+  },
+  {
+    name: 'Legislature',
+    description: 'Propose bills, vote, and fork legislation using the social ledger workflow.'
+  }
+];
+
+const SystemTab = () => (
+  <div className="space-y-6 p-4">
+    <div>
+      <h2 className="text-lg font-semibold text-gray-700">The Civic OS</h2>
+      <p className="mt-1 text-sm text-gray-600">
+        A civic coordination interface for governance, justice, public knowledge, and constitutional AI on the Internet Computer.
+      </p>
+    </div>
+
+    <div className="rounded-lg border border-indigo-400 bg-indigo-50 p-4">
+      <p className="text-sm font-semibold text-indigo-800">System Purpose</p>
+      <p className="mt-1 text-sm text-indigo-700">
+        This application is not a generic LLM chatbot. The chat module is only one interface inside a larger civic operating system.
+      </p>
+    </div>
+
+    <div className="space-y-3">
+      {SYSTEM_MODULES.map((module) => (
+        <div key={module.name} className="rounded border p-3">
+          <p className="font-semibold text-gray-700">{module.name}</p>
+          <p className="mt-1 text-sm text-gray-600">{module.description}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 // ---- Chat Tab ----
 const ChatTab = () => {
   const [chat, setChat] = useState([
-    { system: { content: "I'm a sovereign AI agent living on the Internet Computer. Ask me anything." } }
+    { system: { content: 'Welcome to The Civic OS. This constitutional AI helps you navigate the civic modules, explain governance flows, and reason about public decisions.' } }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -81,7 +139,7 @@ const ChatTab = () => {
         <input
           type="text"
           className="flex-1 rounded-l border p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Ask anything ..."
+          placeholder="Ask Civic OS about governance, justice, membership, or the commons..."
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           disabled={isLoading}
@@ -776,14 +834,24 @@ const LegislatureTab = () => {
 };
 
 // ---- Root App ----
-const TABS = ['Chat', 'Bounties', 'Audit', 'Justice', 'Membership', 'Commons', 'Legislature'];
+const TABS = ['System', 'Chat', 'Bounties', 'Audit', 'Justice', 'Membership', 'Commons', 'Legislature'];
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState('Chat');
+  const [activeTab, setActiveTab] = useState('System');
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <div className="flex h-[85vh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-lg">
+        <div className="border-b bg-gray-50 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h1 className="text-lg font-bold text-gray-800">The Civic OS</h1>
+              <p className="text-xs text-gray-500">Public governance, justice, membership, and commons infrastructure</p>
+            </div>
+            <div className="rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">Live Civic Interface</div>
+          </div>
+        </div>
+
         {/* Tab bar */}
         <div className="flex border-b">
           {TABS.map((tab) => (
@@ -803,6 +871,7 @@ const App = () => {
 
         {/* Tab content */}
         <div className="flex-1 overflow-y-auto">
+          {activeTab === 'System'      && <SystemTab />}
           {activeTab === 'Chat'        && <ChatTab />}
           {activeTab === 'Bounties'    && <BountiesTab />}
           {activeTab === 'Audit'       && <AuditTab />}
