@@ -7,9 +7,6 @@ export default defineConfig({
   base: '/',
   plugins: [react(), environment('all', { prefix: 'CANISTER_' }), environment('all', { prefix: 'DFX_' })],
   envDir: '../',
-  define: {
-    'process.env': process.env
-  },
   optimizeDeps: {
     esbuildOptions: {
       define: {
