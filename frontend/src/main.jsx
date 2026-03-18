@@ -5,10 +5,25 @@ import botImg from '/bot.svg';
 import userImg from '/user.svg';
 import '/index.css';
 
+const buildShareUrls = (title, text) => {
+  const baseUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const encodedUrl = encodeURIComponent(baseUrl);
+  const encodedTitle = encodeURIComponent(title);
+  const encodedText = encodeURIComponent(text);
+
+  return {
+    x: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+    whatsapp: `https://api.whatsapp.com/send?text=${encodedTitle}%20-%20${encodedUrl}`,
+    telegram: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`
+  };
+};
+
 // ---- Chat Tab ----
 const ChatTab = () => {
   const [chat, setChat] = useState([
-    { system: { content: "I'm a sovereign AI agent living on the Internet Computer. Ask me anything." } }
+    { system_: { content: "I'm a sovereign AI agent living on the Internet Computer. Ask me anything." } }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +41,7 @@ const ChatTab = () => {
       setChat((prevChat) => {
         const newChat = [...prevChat];
         newChat.pop();
-        newChat.push({ system: { content: response } });
+        newChat.push({ system_: { content: response } });
         return newChat;
       });
     } catch (e) {
@@ -44,7 +59,7 @@ const ChatTab = () => {
     e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
     const userMessage = { user: { content: inputValue } };
-    setChat((prev) => [...prev, userMessage, { system: { content: 'Thinking ...' } }]);
+    setChat((prev) => [...prev, userMessage, { system_: { content: 'Thinking ...' } }]);
     setInputValue('');
     setIsLoading(true);
     askAgent(chat.slice(1).concat(userMessage));
@@ -61,7 +76,7 @@ const ChatTab = () => {
           const isUser = 'user' in message;
           const img = isUser ? userImg : botImg;
           const name = isUser ? 'User' : 'System';
-          const text = isUser ? message.user.content : message.system.content;
+          const text = isUser ? message.user.content : (message.system_?.content ?? message.system?.content ?? '');
           return (
             <div key={index} className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
               {!isUser && <div className="mr-2 h-10 w-10 rounded-full" style={{ backgroundImage: `url(${img})`, backgroundSize: 'cover' }} />}
@@ -516,8 +531,13 @@ const KnowledgeCommonsTab = () => {
             {skills.length === 0
               ? <p className="text-sm text-gray-500">No skills loaded.</p>
               : <ul className="space-y-2">
-                  {skills.map((s) => (
-                    <li key={Number(s.id)} className="rounded border p-3 text-sm">
+                  {skills.map((s) => {
+                        const shareTitle = `Skill Commit #${Number(s.id)} - ${s.skill}`;
+                        const shareText = `${s.member} committed skill \"${s.skill}\" on The Civic OS.`;
+                        const shareUrls = buildShareUrls(shareTitle, shareText);
+
+                        return (
+                          <li key={Number(s.id)} className="rounded border p-3 text-sm">
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">{s.skill}</span>
                         <span className="text-xs text-gray-400">#{Number(s.id)}</span>
@@ -528,8 +548,17 @@ const KnowledgeCommonsTab = () => {
                           ? `✅ Endorsed by: ${s.endorsements.join(', ')}`
                           : '— No endorsements yet'}
                       </p>
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                              <span className="mr-1 text-gray-500">Share:</span>
+                              <a href={shareUrls.x} target="_blank" rel="noopener noreferrer" className="rounded bg-black px-2 py-1 text-white">X</a>
+                              <a href={shareUrls.linkedin} target="_blank" rel="noopener noreferrer" className="rounded bg-blue-700 px-2 py-1 text-white">LinkedIn</a>
+                              <a href={shareUrls.facebook} target="_blank" rel="noopener noreferrer" className="rounded bg-blue-600 px-2 py-1 text-white">Facebook</a>
+                              <a href={shareUrls.whatsapp} target="_blank" rel="noopener noreferrer" className="rounded bg-green-600 px-2 py-1 text-white">WhatsApp</a>
+                              <a href={shareUrls.telegram} target="_blank" rel="noopener noreferrer" className="rounded bg-sky-600 px-2 py-1 text-white">Telegram</a>
+                            </div>
                     </li>
-                  ))}
+                        );
+                      })}
                 </ul>
             }
           </>
@@ -782,15 +811,16 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('Chat');
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <div className="flex h-[85vh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-lg">
+    <div className="flex min-h-screen items-start justify-center bg-gray-50 p-2 sm:items-center sm:p-4">
+      <div className="flex h-[94vh] w-full max-w-5xl flex-col rounded-md bg-white shadow-lg sm:h-[88vh] sm:rounded-lg">
         {/* Tab bar */}
-        <div className="flex border-b">
+        <div className="overflow-x-auto border-b">
+          <div className="flex min-w-max">
           {TABS.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-3 text-sm font-medium transition-colors ${
+              className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab
                   ? 'border-b-2 border-blue-500 text-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
@@ -799,6 +829,7 @@ const App = () => {
               {tab}
             </button>
           ))}
+          </div>
         </div>
 
         {/* Tab content */}
