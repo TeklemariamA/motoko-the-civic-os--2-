@@ -9,6 +9,7 @@ import Nat32 "mo:base/Nat32";
 import Float "mo:base/Float";
 import Int "mo:base/Int";
 import Blob "mo:base/Blob";
+import Error "mo:base/Error";
 import LLM "mo:llm";
 
 persistent actor CivicOS {
@@ -135,10 +136,15 @@ persistent actor CivicOS {
         }
       },
     );
-    let response = await LLM.chat(#Llama3_1_8B).withMessages(llmMessages).send();
-    switch (response.message.content) {
-      case (?text) text;
-      case null "";
+    try {
+      let response = await LLM.chat(#Llama3_1_8B).withMessages(llmMessages).send();
+      switch (response.message.content) {
+        case (?text) text;
+        case null "";
+      }
+    } catch (err) {
+      let msg = Error.message(err);
+      "CivicOS AI is temporarily unavailable: " # msg
     }
   };
 
