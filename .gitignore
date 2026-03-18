@@ -1,6 +1,7 @@
 .dfx/
 node_modules/
 frontend/package.json.bak
+frontend/dist/
 motoko-the-civic-os--2-/
 .env
 .mops/
