@@ -11,11 +11,11 @@ import Int "mo:base/Int";
 import Blob "mo:base/Blob";
 import LLM "mo:llm";
 
-actor CivicOS {
+persistent actor CivicOS {
 
   // ---- DATA TYPES ----
 
-  public type ChatMessage = { #user : { content : Text }; #system : { content : Text } };
+  public type ChatMessage = { #user : { content : Text }; #system_ : { content : Text } };
 
   public type Bounty = {
     id : Nat;
@@ -130,12 +130,16 @@ actor CivicOS {
       messages,
       func(msg) {
         switch (msg) {
-          case (#user { content }) { { role = #user; content } };
-          case (#system { content }) { { role = #assistant; content } };
+          case (#user { content }) { #user({ content }) };
+          case (#system_ { content }) { #system_({ content }) };
         }
       },
     );
-    await LLM.chat(#Llama3_1_8B)(llmMessages)
+    let response = await LLM.chat(#Llama3_1_8B).withMessages(llmMessages).send();
+    switch (response.message.content) {
+      case (?text) text;
+      case null "";
+    }
   };
 
   // ---- BOUNTIES ----
