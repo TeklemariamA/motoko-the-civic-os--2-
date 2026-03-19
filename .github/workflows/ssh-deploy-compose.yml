@@ -104,7 +104,7 @@ jobs:
             REMOTE_BUILD_CMD='docker compose up -d'
           fi
 
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p "$ssh_target_port" "$ssh_target_user@$ssh_target_host" <<EOF
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -l "$ssh_target_user" -p "$ssh_target_port" "$ssh_target_host" <<EOF
             set -euo pipefail
             cd "$ssh_target_path"
 
