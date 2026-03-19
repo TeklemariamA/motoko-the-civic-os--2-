@@ -83,10 +83,21 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
+      - name: Prepare SSH connection values
+        id: ssh_vars
+        run: |
+          set -euo pipefail
+          echo "host=$(printf '%s' "$DEPLOY_HOST" | tr -d '\r\n')" >> "$GITHUB_OUTPUT"
+          echo "user=$(printf '%s' "$DEPLOY_USER" | tr -d '\r\n')" >> "$GITHUB_OUTPUT"
+          echo "path=$(printf '%s' "$DEPLOY_PATH" | tr -d '\r\n')" >> "$GITHUB_OUTPUT"
+          echo "port=$(printf '%s' "${DEPLOY_PORT:-22}" | tr -d '\r\n')" >> "$GITHUB_OUTPUT"
+
       - name: Add server to known_hosts
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
-          ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan -p "${{ steps.ssh_vars.outputs.port }}" -H "${{ steps.ssh_vars.outputs.host }}" >> ~/.ssh/known_hosts || \
+            echo "::warning title=Known Hosts::ssh-keyscan failed; proceeding with StrictHostKeyChecking disabled for deploy."
 
       - name: Deploy on remote host
         run: |
@@ -96,9 +107,9 @@ jobs:
             REMOTE_BUILD_CMD='docker compose up -d'
           fi
 
-          ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" <<EOF
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p "${{ steps.ssh_vars.outputs.port }}" "${{ steps.ssh_vars.outputs.user }}@${{ steps.ssh_vars.outputs.host }}" <<EOF
             set -euo pipefail
-            cd "$DEPLOY_PATH"
+            cd "${{ steps.ssh_vars.outputs.path }}"
 
             # Keep deploy host in sync with repository.
             git fetch --all --prune

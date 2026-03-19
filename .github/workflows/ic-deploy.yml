@@ -19,19 +19,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '24.x'
           cache: 'npm'
 
       - name: Install dfx (Internet Computer SDK)
         run: |
-          DFXVM_INIT_YES=true DFX_VERSION=0.24.3 sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
+          DFXVM_INIT_YES=true DFX_VERSION=0.30.2 sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
           echo "$HOME/.local/share/dfx/bin" >> $GITHUB_PATH
 
       - name: Verify dfx installation
         run: dfx --version
 
       - name: Install mops (Motoko package manager)
-        run: npm install -g ic-mops
+        run: npm install -g ic-mops@2.4.0
 
       - name: Verify mops installation
         run: mops --version
@@ -43,7 +43,6 @@ jobs:
         run: mops install
 
       - name: Setup dfx identity from secret
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           DFX_IDENTITY: ${{ secrets.DFX_IDENTITY }}
         run: |
@@ -92,4 +91,6 @@ jobs:
         if: env.DRY_RUN == 'false'
         run: |
           echo "Canister IDs:" >> $GITHUB_STEP_SUMMARY
-          cat canister_ids.json >> $GITHUB_STEP_SUMMARY || echo "No canister_ids.json found"
+          dfx canister id backend --network ic | sed 's/^/backend: /' >> $GITHUB_STEP_SUMMARY
+          dfx canister id frontend --network ic | sed 's/^/frontend: /' >> $GITHUB_STEP_SUMMARY
+          dfx canister id llm --network ic | sed 's/^/llm: /' >> $GITHUB_STEP_SUMMARY
