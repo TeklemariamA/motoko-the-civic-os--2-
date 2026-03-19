@@ -36,8 +36,6 @@ fi
 
 read -r -p "Branch to deploy (default main): " BRANCH
 BRANCH="${BRANCH:-main}"
-read -r -p "Skip build by default? (true/false, default false): " SKIP_BUILD
-SKIP_BUILD="${SKIP_BUILD:-false}"
 
 echo ""
 echo "Setting repository secrets on ${REPO}..."
@@ -45,7 +43,6 @@ printf "%s" "${DEPLOY_HOST}" | gh secret set DEPLOY_HOST -R "${REPO}" -b-
 printf "%s" "${DEPLOY_USER}" | gh secret set DEPLOY_USER -R "${REPO}" -b-
 printf "%s" "${DEPLOY_PATH}" | gh secret set DEPLOY_PATH -R "${REPO}" -b-
 printf "%s" "${DEPLOY_PORT}" | gh secret set DEPLOY_PORT -R "${REPO}" -b-
-printf "%s" "${SKIP_BUILD}" | gh secret set DEPLOY_SKIP_BUILD -R "${REPO}" -b-
 gh secret set DEPLOY_SSH_PRIVATE_KEY -R "${REPO}" < "${KEY_PATH}"
 
 echo ""
