@@ -44,16 +44,17 @@ jobs:
 
       - name: Setup dfx identity from secret
         env:
-          DFX_IDENTITY: ${{ secrets.DFX_IDENTITY }}
+          DFX_IDENTITY_PEM: ${{ secrets.DFX_IDENTITY }}
         run: |
-          if [ -z "$DFX_IDENTITY" ]; then
+          if [ -z "$DFX_IDENTITY_PEM" ]; then
             echo "Warning: DFX_IDENTITY secret not set. Using default identity for dry-run."
             echo "To deploy to mainnet, set DFX_IDENTITY secret in repository settings."
             echo "DRY_RUN=true" >> $GITHUB_ENV
           else
             mkdir -p ~/.config/dfx/identity/default
-            echo "$DFX_IDENTITY" > ~/.config/dfx/identity/default/identity.pem
+            echo "$DFX_IDENTITY_PEM" > ~/.config/dfx/identity/default/identity.pem
             chmod 600 ~/.config/dfx/identity/default/identity.pem
+            dfx identity use default
             dfx identity whoami
             echo "DRY_RUN=false" >> $GITHUB_ENV
           fi

@@ -83,33 +83,30 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
 
-      - name: Prepare SSH connection values
-        id: ssh_vars
-        run: |
-          set -euo pipefail
-          echo "host=$(printf '%s' "$DEPLOY_HOST" | tr -d '\r\n')" >> "$GITHUB_OUTPUT"
-          echo "user=$(printf '%s' "$DEPLOY_USER" | tr -d '\r\n')" >> "$GITHUB_OUTPUT"
-          echo "path=$(printf '%s' "$DEPLOY_PATH" | tr -d '\r\n')" >> "$GITHUB_OUTPUT"
-          echo "port=$(printf '%s' "${DEPLOY_PORT:-22}" | tr -d '\r\n')" >> "$GITHUB_OUTPUT"
-
       - name: Add server to known_hosts
         run: |
           set -euo pipefail
+          ssh_target_host="$(printf '%s' "$DEPLOY_HOST" | tr -d '\r\n')"
+          ssh_target_port="$(printf '%s' "${DEPLOY_PORT:-22}" | tr -d '\r\n')"
           mkdir -p ~/.ssh
-          ssh-keyscan -p "${{ steps.ssh_vars.outputs.port }}" -H "${{ steps.ssh_vars.outputs.host }}" >> ~/.ssh/known_hosts || \
+          ssh-keyscan -p "$ssh_target_port" -H "$ssh_target_host" >> ~/.ssh/known_hosts || \
             echo "::warning title=Known Hosts::ssh-keyscan failed; proceeding with StrictHostKeyChecking disabled for deploy."
 
       - name: Deploy on remote host
         run: |
           set -euo pipefail
+          ssh_target_host="$(printf '%s' "$DEPLOY_HOST" | tr -d '\r\n')"
+          ssh_target_user="$(printf '%s' "$DEPLOY_USER" | tr -d '\r\n')"
+          ssh_target_path="$(printf '%s' "$DEPLOY_PATH" | tr -d '\r\n')"
+          ssh_target_port="$(printf '%s' "${DEPLOY_PORT:-22}" | tr -d '\r\n')"
           REMOTE_BUILD_CMD='docker compose up -d --build'
           if [ "$SKIP_BUILD" = "true" ]; then
             REMOTE_BUILD_CMD='docker compose up -d'
           fi
 
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p "${{ steps.ssh_vars.outputs.port }}" "${{ steps.ssh_vars.outputs.user }}@${{ steps.ssh_vars.outputs.host }}" <<EOF
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p "$ssh_target_port" "$ssh_target_user@$ssh_target_host" <<EOF
             set -euo pipefail
-            cd "${{ steps.ssh_vars.outputs.path }}"
+            cd "$ssh_target_path"
 
             # Keep deploy host in sync with repository.
             git fetch --all --prune
