@@ -37,13 +37,24 @@ jobs:
     steps:
       - name: Validate required secrets
         run: |
-          set -e
+          set -euo pipefail
+          missing=0
           for var in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH; do
-            if [ -z "${!var}" ]; then
-              echo "Missing required secret/config: $var"
-              exit 1
+            if [ -z "${!var:-}" ]; then
+              echo "::error title=Missing Secret::Required secret '$var' is not set."
+              missing=1
             fi
           done
+
+          if [ -z "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" ]; then
+            echo "::error title=Missing Secret::Required secret 'DEPLOY_SSH_PRIVATE_KEY' is not set."
+            missing=1
+          fi
+
+          if [ "$missing" -ne 0 ]; then
+            echo "One or more required deploy secrets are missing."
+            exit 1
+          fi
 
       - name: Add SSH private key
         uses: webfactory/ssh-agent@v0.9.0
