@@ -24,7 +24,50 @@ permissions:
   contents: read
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+
+    steps:
+      - id: check
+        name: Check required deploy secrets
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          missing=()
+
+          [ -z "${DEPLOY_HOST:-}" ] && missing+=("DEPLOY_HOST")
+          [ -z "${DEPLOY_USER:-}" ] && missing+=("DEPLOY_USER")
+          [ -z "${DEPLOY_PATH:-}" ] && missing+=("DEPLOY_PATH")
+          [ -z "${DEPLOY_SSH_PRIVATE_KEY:-}" ] && missing+=("DEPLOY_SSH_PRIVATE_KEY")
+
+          if [ ${#missing[@]} -eq 0 ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Deploy Ready::All required SSH deploy secrets are configured."
+            {
+              echo "### SSH deploy preflight"
+              echo "- Status: ready"
+              echo "- Required secrets: configured"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Deploy Skipped::Missing secrets: ${missing[*]}"
+            {
+              echo "### SSH deploy preflight"
+              echo "- Status: skipped"
+              echo "- Missing secrets: ${missing[*]}"
+              echo "- Action: Add repository secrets, then re-run this workflow"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   deploy:
+    needs: preflight
+    if: ${{ needs.preflight.outputs.ready == 'true' }}
     runs-on: ubuntu-latest
     env:
       DEPLOY_BRANCH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_branch || github.ref_name }}
@@ -35,27 +78,6 @@ jobs:
       SKIP_BUILD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.skip_build || 'false' }}
 
     steps:
-      - name: Validate required secrets
-        run: |
-          set -euo pipefail
-          missing=0
-          for var in DEPLOY_HOST DEPLOY_USER DEPLOY_PATH; do
-            if [ -z "${!var:-}" ]; then
-              echo "::error title=Missing Secret::Required secret '$var' is not set."
-              missing=1
-            fi
-          done
-
-          if [ -z "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" ]; then
-            echo "::error title=Missing Secret::Required secret 'DEPLOY_SSH_PRIVATE_KEY' is not set."
-            missing=1
-          fi
-
-          if [ "$missing" -ne 0 ]; then
-            echo "One or more required deploy secrets are missing."
-            exit 1
-          fi
-
       - name: Add SSH private key
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -88,3 +110,13 @@ jobs:
             echo "Deployment completed on \\$(hostname) at \\$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
             docker compose ps
           EOF
+
+  deploy-skipped:
+    needs: preflight
+    if: ${{ needs.preflight.outputs.ready != 'true' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Skip deploy when secrets are missing
+        run: |
+          echo "SSH deploy skipped because required secrets are not fully configured."
