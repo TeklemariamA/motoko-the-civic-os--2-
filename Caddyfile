@@ -1,5 +1,5 @@
 civic-os-opensourcism.cloud, www.civic-os-opensourcism.cloud {
-    reverse_proxy frontend:80
+    reverse_proxy 127.0.0.1:8080
 }
 
 # Legacy/typo hostname redirect to canonical domain.
