@@ -6,9 +6,10 @@ This repository includes several GitHub Actions workflows for continuous integra
 
 ### 1. IC Deploy (`ic-deploy.yml`) ✨ NEW
 
-**Purpose:** Build and deploy the Motoko-based LLM Chatbot dapp to the Internet Computer mainnet.
+**Purpose:** Build and deploy the CivicOS canisters (backend + assets) to the Internet Computer mainnet.
 
 **Triggers:**
+
 - Push to `main` branch
 - Manual workflow dispatch
 
@@ -52,6 +53,7 @@ dfx wallet balance
 **Purpose:** Continuous integration testing across multiple Node.js versions.
 
 **Triggers:**
+
 - Push to `main` branch
 - Pull requests to `main` branch
 
@@ -67,6 +69,7 @@ dfx wallet balance
 **Purpose:** Deploy the frontend static assets to GitHub Pages.
 
 **Triggers:**
+
 - Push to `main` branch
 - Manual workflow dispatch
 
@@ -83,6 +86,7 @@ Enable GitHub Pages in repository Settings → Pages → Source: GitHub Actions
 **Purpose:** Build and push Docker images of the CivicOS v2.0 backend to civic-os-opensourcism.cloud registry.
 
 **Triggers:**
+
 - Push to `main` branch (when backend/, Dockerfile, or workflow changes)
 - Manual workflow dispatch
 
@@ -94,6 +98,7 @@ Enable GitHub Pages in repository Settings → Pages → Source: GitHub Actions
 
 **Setup:**
 Add the following secrets:
+
 - `DOCKER_USERNAME`: Username for civic-os-opensourcism.cloud registry
 - `DOCKER_PASSWORD`: Password/token for civic-os-opensourcism.cloud registry
 
@@ -109,11 +114,13 @@ For more details, see [DOCKER.md](../DOCKER.md).
 **Purpose:** Run Datadog synthetic monitoring tests.
 
 **Triggers:**
+
 - Push to `main` branch
 - Pull requests to `main` branch
 
 **Setup:**
 Add the following secrets:
+
 - `DD_API_KEY`: Datadog API key
 - `DD_APP_KEY`: Datadog Application key
 
@@ -130,6 +137,7 @@ Add the following secrets:
 **Purpose:** Automatically upload all GitHub Actions workflow files to the Civic-Os hosting service.
 
 **Triggers:**
+
 - Push to `main` branch (when `.github/workflows/*.yml` files change)
 - Manual workflow dispatch
 
@@ -140,11 +148,12 @@ Add the following secrets:
 
 **Setup:**
 Add the following secrets:
+
 - `FTP_USERNAME`: FTP username for srv1163-files.hstgr.io
 - `FTP_PASSWORD`: FTP password for authentication
 
 **Target Location:**
-```
+```text
 https://srv1163-files.hstgr.io/bf74c39f6227ae6c/files/public_html/Civic-Os/
 ```
 
@@ -155,6 +164,7 @@ For complete setup and usage instructions, see [YML_UPLOAD.md](../YML_UPLOAD.md)
 **Purpose:** Automatically deploy the Docker Compose stack to your server over SSH after pushes to `main`.
 
 **Triggers:**
+
 - Push to `main` (when deployment-relevant files change)
 - Manual workflow dispatch
 

@@ -5,5 +5,13 @@ services:
       dockerfile: Dockerfile
     container_name: civicos-frontend
     restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Required: a real backend canister ID for the selected network.
+      CANISTER_ID_BACKEND: ${CANISTER_ID_BACKEND:?Set CANISTER_ID_BACKEND in .env or shell env}
+      DFX_NETWORK: ${DFX_NETWORK:-ic}
+      IC_HOST: ${IC_HOST:-}
+      ENABLE_CHATBOT: ${ENABLE_CHATBOT:-false}
     ports:
-      - "127.0.0.1:8080:80"
+      - "[::]:8080:80"

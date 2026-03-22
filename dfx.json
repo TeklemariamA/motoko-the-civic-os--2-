@@ -1,7 +1,6 @@
 {
   "canisters": {
     "backend": {
-      "dependencies": ["llm"],
       "main": "backend/app.mo",
       "type": "motoko",
       "args": "--enhanced-orthogonal-persistence"
@@ -13,17 +12,6 @@
       },
       "source": ["frontend/dist"],
       "type": "assets"
-    },
-    "llm": {
-      "candid": "https://github.com/dfinity/llm/releases/latest/download/llm-canister-ollama.did",
-      "type": "custom",
-      "specified_id": "w36hm-eqaaa-aaaal-qr76a-cai",
-      "remote": {
-        "id": {
-          "ic": "w36hm-eqaaa-aaaal-qr76a-cai"
-        }
-      },
-      "wasm": "https://github.com/dfinity/llm/releases/latest/download/llm-canister-ollama.wasm"
     }
   },
   "output_env_file": ".env",

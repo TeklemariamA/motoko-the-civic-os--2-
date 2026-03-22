@@ -1,8 +1,4 @@
 export const idlFactory = ({ IDL }) => {
-  const ChatMessage = IDL.Variant({
-    'user': IDL.Record({ 'content': IDL.Text }),
-    'system': IDL.Record({ 'content': IDL.Text }),
-  });
   const Bill = IDL.Record({
     'id': IDL.Nat,
     'status': IDL.Text,
@@ -68,7 +64,6 @@ export const idlFactory = ({ IDL }) => {
       ],
       [],
     ),
-    'chat': IDL.Func([IDL.Vec(ChatMessage)], [IDL.Text], []),
     'commitSkill': IDL.Func(
       [IDL.Text, IDL.Text, IDL.Text],
       [IDL.Opt(IDL.Record({ 'skill_id': IDL.Nat, 'message': IDL.Text }))],

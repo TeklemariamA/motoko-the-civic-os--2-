@@ -2,7 +2,7 @@ name: Deploy to Internet Computer
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -19,8 +19,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24.x'
-          cache: 'npm'
+          node-version: 24.x
+          cache: npm
 
       - name: Install dfx (Internet Computer SDK)
         run: |
@@ -94,4 +94,3 @@ jobs:
           echo "Canister IDs:" >> $GITHUB_STEP_SUMMARY
           dfx canister id backend --network ic | sed 's/^/backend: /' >> $GITHUB_STEP_SUMMARY
           dfx canister id frontend --network ic | sed 's/^/frontend: /' >> $GITHUB_STEP_SUMMARY
-          dfx canister id llm --network ic | sed 's/^/llm: /' >> $GITHUB_STEP_SUMMARY

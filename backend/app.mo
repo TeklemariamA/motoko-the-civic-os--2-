@@ -9,14 +9,10 @@ import Nat32 "mo:base/Nat32";
 import Float "mo:base/Float";
 import Int "mo:base/Int";
 import Blob "mo:base/Blob";
-import Error "mo:base/Error";
-import LLM "mo:llm";
 
 persistent actor CivicOS {
 
   // ---- DATA TYPES ----
-
-  public type ChatMessage = { #user : { content : Text }; #system_ : { content : Text } };
 
   public type Bounty = {
     id : Nat;
@@ -122,31 +118,6 @@ persistent actor CivicOS {
     { name = "elara"; merit = 50 },
     { name = "devon"; merit = 20 },
   ];
-
-  // ---- LLM CHAT ----
-
-  /// Send chat messages to the on-chain LLM and return its reply.
-  public func chat(messages : [ChatMessage]) : async Text {
-    let llmMessages = Array.map<ChatMessage, LLM.ChatMessage>(
-      messages,
-      func(msg) {
-        switch (msg) {
-          case (#user { content }) { #user({ content }) };
-          case (#system_ { content }) { #system_({ content }) };
-        }
-      },
-    );
-    try {
-      let response = await LLM.chat(#Llama3_1_8B).withMessages(llmMessages).send();
-      switch (response.message.content) {
-        case (?text) text;
-        case null "";
-      }
-    } catch (err) {
-      let msg = Error.message(err);
-      "CivicOS AI is temporarily unavailable: " # msg
-    }
-  };
 
   // ---- BOUNTIES ----
 

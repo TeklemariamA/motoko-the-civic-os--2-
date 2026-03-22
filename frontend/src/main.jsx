@@ -5,6 +5,25 @@ import botImg from '/bot.svg';
 import userImg from '/user.svg';
 import '/index.css';
 
+const runtimeConfig = globalThis?.CIVIC_OS_CONFIG || {};
+const processEnv = typeof process !== 'undefined' ? process.env : {};
+
+const parseBoolean = (value, fallback = false) => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  }
+  return fallback;
+};
+
+const CHATBOT_ENABLED = parseBoolean(runtimeConfig.ENABLE_CHATBOT, false);
+const CHAT_ENDPOINT = runtimeConfig.CHAT_ENDPOINT
+  || processEnv.CHAT_ENDPOINT
+  || import.meta.env.CHAT_ENDPOINT
+  || 'https://civic-os-opensourcism.cloud/chat';
+
 const buildShareUrls = (title, text) => {
   const baseUrl = typeof window !== 'undefined' ? window.location.href : '';
   const encodedUrl = encodeURIComponent(baseUrl);
@@ -20,6 +39,20 @@ const buildShareUrls = (title, text) => {
   };
 };
 
+const ShareBar = ({ title, text }) => {
+  const share = buildShareUrls(title, text);
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500" aria-label="Share links">
+      <span>Share:</span>
+      <a className="rounded bg-black px-2 py-1 text-white" href={share.x} target="_blank" rel="noopener noreferrer">X</a>
+      <a className="rounded bg-blue-700 px-2 py-1 text-white" href={share.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      <a className="rounded bg-blue-600 px-2 py-1 text-white" href={share.facebook} target="_blank" rel="noopener noreferrer">Facebook</a>
+      <a className="rounded bg-green-600 px-2 py-1 text-white" href={share.whatsapp} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+      <a className="rounded bg-sky-600 px-2 py-1 text-white" href={share.telegram} target="_blank" rel="noopener noreferrer">Telegram</a>
+    </div>
+  );
+};
+
 // ---- Chat Tab ----
 const ChatTab = () => {
   const [chat, setChat] = useState([
@@ -27,6 +60,8 @@ const ChatTab = () => {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [chatHealth, setChatHealth] = useState('unknown'); // unknown | ok | down
+  const [chatHealthMsg, setChatHealthMsg] = useState('');
   const chatBoxRef = useRef(null);
 
   const formatDate = (date) => {
@@ -37,21 +72,73 @@ const ChatTab = () => {
 
   const askAgent = async (messages) => {
     try {
-      const response = await backend.chat(messages);
+      const payload = {
+        messages: messages.map((m) => {
+          if ('user' in m) return { role: 'user', content: m.user.content };
+          return { role: 'system', content: m.system_?.content ?? m.system?.content ?? '' };
+        })
+      };
+
+      const resp = await fetch(CHAT_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      let replyText = '';
+      const contentType = resp.headers.get('content-type') || '';
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error(errText || `Chat service error (${resp.status})`);
+      }
+
+      if (contentType.includes('application/json')) {
+        const data = await resp.json();
+        if (typeof data === 'string') replyText = data;
+        else if (typeof data.reply === 'string') replyText = data.reply;
+        else if (typeof data.message === 'string') replyText = data.message;
+        else if (typeof data.content === 'string') replyText = data.content;
+        else replyText = JSON.stringify(data);
+      } else {
+        replyText = await resp.text();
+      }
+
       setChat((prevChat) => {
         const newChat = [...prevChat];
         newChat.pop();
-        newChat.push({ system_: { content: response } });
+        newChat.push({ system_: { content: replyText } });
         return newChat;
       });
     } catch (e) {
       console.log(e);
       const eStr = String(e);
-      const match = eStr.match(/(SysTransient|CanisterReject), \\+"([^\\"]+)/);
+      const match = eStr.match(/(SysTransient|CanisterReject), \+"([^\"]+)/);
       if (match) alert(match[2]);
       setChat((prevChat) => { const updatedChat = [...prevChat]; updatedChat.pop(); return updatedChat; });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const checkChatHealth = async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    try {
+      const resp = await fetch(CHAT_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'ping' }] }),
+        signal: controller.signal
+      });
+      const ok = resp.ok;
+      const txt = await resp.text();
+      setChatHealth(ok ? 'ok' : 'down');
+      setChatHealthMsg(ok ? 'Chat is reachable' : `Chat error ${resp.status}: ${txt?.slice(0, 120)}`);
+    } catch (err) {
+      setChatHealth('down');
+      setChatHealthMsg(String(err));
+    } finally {
+      clearTimeout(timeout);
     }
   };
 
@@ -69,8 +156,22 @@ const ChatTab = () => {
     if (chatBoxRef.current) chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
   }, [chat]);
 
+  useEffect(() => {
+    checkChatHealth();
+  }, []);
+
   return (
     <div className="flex h-full flex-col">
+      <div className="border-b bg-white p-4">
+        <h2 className="text-lg font-semibold text-gray-700">🤖 Civic OS Agent</h2>
+        <ShareBar title="Chat with Civic OS" text="Ask the Civic OS sovereign AI agent" />
+      </div>
+      {chatHealth !== 'ok' && (
+        <div className="bg-yellow-100 text-yellow-800 px-3 py-2 text-sm">
+          {chatHealth === 'down' ? 'Chat service unreachable. ' : 'Checking chat service… '}
+          {chatHealthMsg}
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto bg-gray-100 p-4" ref={chatBoxRef}>
         {chat.map((message, index) => {
           const isUser = 'user' in message;
@@ -80,7 +181,7 @@ const ChatTab = () => {
           return (
             <div key={index} className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
               {!isUser && <div className="mr-2 h-10 w-10 rounded-full" style={{ backgroundImage: `url(${img})`, backgroundSize: 'cover' }} />}
-              <div className={`max-w-[70%] rounded-lg p-3 ${isUser ? 'bg-blue-500 text-white' : 'bg-white shadow'}`}>
+              <div className={`max-w-[88%] md:max-w-[70%] rounded-lg p-3 ${isUser ? 'bg-blue-500 text-white' : 'bg-white shadow'}`}>
                 <div className={`mb-1 flex items-center justify-between text-sm ${isUser ? 'text-white' : 'text-gray-500'}`}>
                   <div>{name}</div>
                   <div className="mx-2">{formatDate(new Date())}</div>
@@ -92,16 +193,16 @@ const ChatTab = () => {
           );
         })}
       </div>
-      <form className="flex border-t bg-white p-4" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-2 border-t bg-white p-3 sm:flex-row sm:p-4" onSubmit={handleSubmit}>
         <input
           type="text"
-          className="flex-1 rounded-l border p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 rounded border p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:rounded-l sm:rounded-r-none"
           placeholder="Ask anything ..."
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           disabled={isLoading}
         />
-        <button type="submit" className="rounded-r bg-blue-500 p-2 text-white hover:bg-blue-600 disabled:bg-blue-300" disabled={isLoading}>
+        <button type="submit" className="w-full rounded bg-blue-500 p-2 text-white hover:bg-blue-600 disabled:bg-blue-300 sm:w-auto sm:rounded-r sm:rounded-l-none" disabled={isLoading}>
           Send
         </button>
       </form>
@@ -144,8 +245,11 @@ const BountiesTab = () => {
   };
 
   return (
-    <div className="space-y-6 p-4">
-      <h2 className="text-lg font-semibold text-gray-700">Post a Bounty</h2>
+    <div className="space-y-6 p-3 sm:p-4">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-700">Post a Bounty</h2>
+        <ShareBar title="Post a bounty" text="Create a bounty on The Civic OS" />
+      </div>
       <form onSubmit={handleCreate} className="space-y-3">
         <input className="w-full rounded border p-2" placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} required />
         <input className="w-full rounded border p-2" type="number" placeholder="Base reward (e.g. 100)" value={baseReward} onChange={(e) => setBaseReward(e.target.value)} required />
@@ -155,7 +259,10 @@ const BountiesTab = () => {
       {status && <p className="text-sm text-gray-600">{status}</p>}
 
       <hr />
-      <h2 className="text-lg font-semibold text-gray-700">Check Current Value</h2>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-700">Check Current Value</h2>
+        <ShareBar title="Check bounty value" text="Look up bounty rewards on The Civic OS" />
+      </div>
       <form onSubmit={handleQuery} className="flex gap-2">
         <input className="flex-1 rounded border p-2" type="number" placeholder="Bounty ID" value={queryId} onChange={(e) => setQueryId(e.target.value)} required />
         <button type="submit" className="rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600">Check</button>
@@ -194,8 +301,11 @@ const AuditTab = () => {
   };
 
   return (
-    <div className="space-y-6 p-4">
-      <h2 className="text-lg font-semibold text-gray-700">Submit Private Action (ZK-Proof)</h2>
+    <div className="space-y-6 p-3 sm:p-4">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-700">Submit Private Action (ZK-Proof)</h2>
+        <ShareBar title="Submit private action" text="Record a private zk-proof action on The Civic OS" />
+      </div>
       <form onSubmit={handleSubmit} className="space-y-3">
         <input className="w-full rounded border p-2" placeholder="Proof hash (sha256 of your action)" value={proofHash} onChange={(e) => setProofHash(e.target.value)} required />
         <input className="w-full rounded border p-2" placeholder="Action type (e.g. vote, spend)" value={actionType} onChange={(e) => setActionType(e.target.value)} required />
@@ -205,7 +315,10 @@ const AuditTab = () => {
 
       <hr />
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-700">Public Audit Log</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-700">Public Audit Log</h2>
+          <ShareBar title="Public audit log" text="Browse the Civic OS public audit log" />
+        </div>
         <button onClick={handleFetchLog} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
       </div>
       {log.length === 0
@@ -263,8 +376,11 @@ const JusticeTab = () => {
   };
 
   return (
-    <div className="space-y-6 p-4">
-      <h2 className="text-lg font-semibold text-gray-700">File a Case</h2>
+    <div className="space-y-6 p-3 sm:p-4">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-700">File a Case</h2>
+        <ShareBar title="File a case" text="Open a justice case on The Civic OS" />
+      </div>
       <form onSubmit={handleFileCase} className="space-y-3">
         <input className="w-full rounded border p-2" placeholder="Plaintiff" value={plaintiff} onChange={(e) => setPlaintiff(e.target.value)} required />
         <input className="w-full rounded border p-2" placeholder="Defendant" value={defendant} onChange={(e) => setDefendant(e.target.value)} required />
@@ -275,7 +391,10 @@ const JusticeTab = () => {
       {caseResult && <p className="text-sm text-gray-600">{caseResult}</p>}
 
       <hr />
-      <h2 className="text-lg font-semibold text-gray-700">Cast Verdict</h2>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-700">Cast Verdict</h2>
+        <ShareBar title="Cast verdict" text="Participate as juror on The Civic OS" />
+      </div>
       <form onSubmit={handleCastVerdict} className="space-y-3">
         <input className="w-full rounded border p-2" type="number" placeholder="Case ID" value={caseId} onChange={(e) => setCaseId(e.target.value)} required />
         <input className="w-full rounded border p-2" placeholder="Juror name" value={jurorName} onChange={(e) => setJurorName(e.target.value)} required />
@@ -338,8 +457,11 @@ const MembershipTab = () => {
   };
 
   return (
-    <div className="space-y-6 p-4">
-      <h2 className="text-lg font-semibold text-gray-700">🪪 Enroll as a Citizen</h2>
+    <div className="space-y-6 p-3 sm:p-4">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-700">🪪 Enroll as a Citizen</h2>
+        <ShareBar title="Enroll as a citizen" text="Join The Civic OS as a member" />
+      </div>
       <form onSubmit={handleEnroll} className="space-y-3">
         <input className="w-full rounded border p-2" placeholder="Name (unique handle)" value={name} onChange={(e) => setName(e.target.value)} required />
         <textarea className="w-full rounded border p-2" rows={2} placeholder="Bio" value={bio} onChange={(e) => setBio(e.target.value)} required />
@@ -355,7 +477,10 @@ const MembershipTab = () => {
 
       <hr />
 
-      <h2 className="text-lg font-semibold text-gray-700">🔍 Lookup Member</h2>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-700">🔍 Lookup Member</h2>
+        <ShareBar title="Lookup members" text="Browse Civic OS member directory" />
+      </div>
       <form onSubmit={handleLookup} className="flex gap-2">
         <input className="flex-1 rounded border p-2" placeholder="Member name" value={lookupName} onChange={(e) => setLookupName(e.target.value)} required />
         <button type="submit" className="rounded bg-gray-600 px-3 py-2 text-white hover:bg-gray-700">Search</button>
@@ -376,7 +501,10 @@ const MembershipTab = () => {
       <hr />
 
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-700">👥 All Members</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-700">👥 All Members</h2>
+          <ShareBar title="Member list" text="View Civic OS members" />
+        </div>
         <button onClick={fetchMembers} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
       </div>
       {members.length === 0
@@ -492,6 +620,10 @@ const KnowledgeCommonsTab = () => {
 
   return (
     <div className="flex flex-col">
+      <div className="border-b bg-white p-3">
+        <h2 className="text-lg font-semibold text-gray-700">🌐 Knowledge Commons</h2>
+        <ShareBar title="Knowledge Commons" text="Contribute to the Civic OS knowledge commons" />
+      </div>
       {/* Sub-tabs */}
       <div className="flex border-b">
         {sectionBtn('skills', '🎓 Skill Commits')}
@@ -499,11 +631,14 @@ const KnowledgeCommonsTab = () => {
         {sectionBtn('charter', '📜 AI Charter')}
       </div>
 
-      <div className="overflow-y-auto p-4 space-y-6">
+      <div className="overflow-y-auto p-3 sm:p-4 space-y-6">
         {/* ---- Skill Commits ---- */}
         {activeSection === 'skills' && (
           <>
-            <h2 className="text-base font-semibold text-gray-700">Commit a Skill</h2>
+            <div>
+              <h2 className="text-base font-semibold text-gray-700">Commit a Skill</h2>
+              <ShareBar title="Commit a skill" text="Add your skills to the Civic OS commons" />
+            </div>
             <p className="text-xs text-gray-400">Education is lifelong — every skill you master is a verifiable commit to the commons.</p>
             <form onSubmit={handleCommitSkill} className="space-y-3">
               <input className="w-full rounded border p-2 text-sm" placeholder="Your member name" value={scMember} onChange={(e) => setScMember(e.target.value)} required />
@@ -514,7 +649,10 @@ const KnowledgeCommonsTab = () => {
             {scStatus && <p className="text-sm text-gray-600">{scStatus}</p>}
 
             <hr />
-            <h2 className="text-base font-semibold text-gray-700">Endorse a Skill</h2>
+            <div>
+              <h2 className="text-base font-semibold text-gray-700">Endorse a Skill</h2>
+              <ShareBar title="Endorse a skill" text="Support peers on the Civic OS commons" />
+            </div>
             <form onSubmit={handleEndorse} className="space-y-3">
               <input className="w-full rounded border p-2 text-sm" type="number" placeholder="Skill Commit ID" value={endorseId} onChange={(e) => setEndorseId(e.target.value)} required />
               <input className="w-full rounded border p-2 text-sm" placeholder="Endorser name" value={endorser} onChange={(e) => setEndorser(e.target.value)} required />
@@ -523,7 +661,10 @@ const KnowledgeCommonsTab = () => {
             {endorseStatus && <p className="text-sm text-gray-600">{endorseStatus}</p>}
 
             <hr />
-            <h2 className="text-base font-semibold text-gray-700">Browse Skills</h2>
+            <div>
+              <h2 className="text-base font-semibold text-gray-700">Browse Skills</h2>
+              <ShareBar title="Browse skills" text="See member skills on The Civic OS" />
+            </div>
             <form onSubmit={fetchSkills} className="flex gap-2">
               <input className="flex-1 rounded border p-2 text-sm" placeholder="Member name" value={listMember} onChange={(e) => setListMember(e.target.value)} required />
               <button type="submit" className="rounded bg-gray-200 px-3 py-2 text-sm hover:bg-gray-300">Load</button>
@@ -567,7 +708,10 @@ const KnowledgeCommonsTab = () => {
         {/* ---- Open Science ---- */}
         {activeSection === 'science' && (
           <>
-            <h2 className="text-base font-semibold text-gray-700">Publish Research</h2>
+            <div>
+              <h2 className="text-base font-semibold text-gray-700">Publish Research</h2>
+              <ShareBar title="Publish research" text="Share open research on The Civic OS" />
+            </div>
             <p className="text-xs text-gray-400">The Human Source Code — medicine and all public knowledge — belongs to no corporation. Publish openly.</p>
             <form onSubmit={handlePublish} className="space-y-3">
               <input className="w-full rounded border p-2 text-sm" placeholder="Title" value={rsTitle} onChange={(e) => setRsTitle(e.target.value)} required />
@@ -590,7 +734,10 @@ const KnowledgeCommonsTab = () => {
 
             <hr />
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-gray-700">Research Registry</h2>
+              <div>
+                <h2 className="text-base font-semibold text-gray-700">Research Registry</h2>
+                <ShareBar title="Research registry" text="Browse open research on The Civic OS" />
+              </div>
               <button onClick={fetchResearch} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
             </div>
             {research.length === 0
@@ -618,7 +765,10 @@ const KnowledgeCommonsTab = () => {
         {/* ---- AI Charter ---- */}
         {activeSection === 'charter' && (
           <>
-            <h2 className="text-base font-semibold text-gray-700">AI Bill of Rights</h2>
+            <div>
+              <h2 className="text-base font-semibold text-gray-700">AI Bill of Rights</h2>
+              <ShareBar title="AI Bill of Rights" text="Read the Civic OS AI Bill of Rights" />
+            </div>
             <p className="text-xs text-gray-400 italic">Ratified on the Social Ledger</p>
             <ul className="space-y-4">
               {AI_CHARTER.map((article) => (
@@ -716,7 +866,10 @@ const LegislatureTab = () => {
   return (
     <div className="space-y-6 p-4">
       {/* Propose */}
-      <h2 className="text-lg font-semibold text-gray-700">📜 Propose a Bill</h2>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-700">📜 Propose a Bill</h2>
+        <ShareBar title="Propose a bill" text="Draft legislation on The Civic OS" />
+      </div>
       <form onSubmit={handlePropose} className="space-y-3">
         <input className="w-full rounded border p-2" placeholder="Bill title" value={title} onChange={(e) => setTitle(e.target.value)} required />
         <textarea className="w-full rounded border p-2" rows={3} placeholder="Bill body / description" value={body} onChange={(e) => setBody(e.target.value)} required />
@@ -729,7 +882,10 @@ const LegislatureTab = () => {
       <hr />
 
       {/* Vote */}
-      <h2 className="text-lg font-semibold text-gray-700">🗳️ Cast Vote <span className="text-sm font-normal text-gray-500">(50+1 rule)</span></h2>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-700">🗳️ Cast Vote <span className="text-sm font-normal text-gray-500">(50+1 rule)</span></h2>
+        <ShareBar title="Vote on bills" text="Cast a vote on Civic OS legislation" />
+      </div>
       <p className="text-xs text-gray-400">A bill commits to the Social Ledger once Yes votes exceed 50% of all participating votes.</p>
       <form onSubmit={handleVote} className="space-y-3">
         <input className="w-full rounded border p-2" type="number" placeholder="Bill ID" value={voteId} onChange={(e) => setVoteId(e.target.value)} required />
@@ -746,7 +902,10 @@ const LegislatureTab = () => {
       <hr />
 
       {/* Fork */}
-      <h2 className="text-lg font-semibold text-gray-700">🍴 Fork a Bill</h2>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-700">🍴 Fork a Bill</h2>
+        <ShareBar title="Fork a bill" text="Create a forked bill on The Civic OS" />
+      </div>
       <p className="text-xs text-gray-400">Create an amended variant of an existing bill. The fork starts fresh with 0 votes.</p>
       <form onSubmit={handleFork} className="space-y-3">
         <input className="w-full rounded border p-2" type="number" placeholder="Original Bill ID" value={forkId} onChange={(e) => setForkId(e.target.value)} required />
@@ -761,7 +920,10 @@ const LegislatureTab = () => {
 
       {/* Bill list */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-700">📋 All Bills</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-700">📋 All Bills</h2>
+          <ShareBar title="All bills" text="Browse Civic OS legislation" />
+        </div>
         <button onClick={fetchBills} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
       </div>
       {bills.length === 0
@@ -805,14 +967,15 @@ const LegislatureTab = () => {
 };
 
 // ---- Root App ----
-const TABS = ['Chat', 'Bounties', 'Audit', 'Justice', 'Membership', 'Commons', 'Legislature'];
+const BASE_TABS = ['Bounties', 'Audit', 'Justice', 'Membership', 'Commons', 'Legislature'];
+const TABS = CHATBOT_ENABLED ? ['Chat', ...BASE_TABS] : BASE_TABS;
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState('Chat');
+  const [activeTab, setActiveTab] = useState(TABS[0]);
 
   return (
-    <div className="flex min-h-screen items-start justify-center bg-gray-50 p-2 sm:items-center sm:p-4">
-      <div className="flex h-[94vh] w-full max-w-5xl flex-col rounded-md bg-white shadow-lg sm:h-[88vh] sm:rounded-lg">
+    <div className="flex min-h-screen items-start justify-center bg-gray-50 p-3 sm:items-center sm:p-4 lg:p-6">
+      <div className="flex w-full max-w-5xl flex-col overflow-hidden rounded-md bg-white shadow-lg sm:rounded-lg min-h-[90vh] sm:min-h-[80vh] lg:min-h-[70vh]">
         {/* Tab bar */}
         <div className="overflow-x-auto border-b">
           <div className="flex min-w-max">
@@ -833,7 +996,7 @@ const App = () => {
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto px-3 pb-4 sm:px-4">
           {activeTab === 'Chat'        && <ChatTab />}
           {activeTab === 'Bounties'    && <BountiesTab />}
           {activeTab === 'Audit'       && <AuditTab />}

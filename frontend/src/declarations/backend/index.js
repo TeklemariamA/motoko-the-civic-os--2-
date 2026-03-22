@@ -10,12 +10,20 @@ const stripQuotes = (value) => {
   return value.replace(/^['\"]|['\"]$/g, '');
 };
 
+const readRuntimeValue = (key) => {
+  if (!hasOwn(runtimeConfig, key)) return undefined;
+  const value = stripQuotes(runtimeConfig[key]);
+  // Treat empty strings as unset so build-time env fallbacks can still apply.
+  if (typeof value === 'string' && value.trim() === '') return undefined;
+  return value;
+};
+
 const canisterId = stripQuotes(
-  hasOwn(runtimeConfig, 'CANISTER_ID_BACKEND')
-    ? runtimeConfig.CANISTER_ID_BACKEND
+  readRuntimeValue('CANISTER_ID_BACKEND')
+    ? readRuntimeValue('CANISTER_ID_BACKEND')
     : (
-      hasOwn(runtimeConfig, 'CANISTER_ID')
-        ? runtimeConfig.CANISTER_ID
+      readRuntimeValue('CANISTER_ID')
+        ? readRuntimeValue('CANISTER_ID')
         : (
           processEnv.CANISTER_ID_BACKEND
           || processEnv.CANISTER_ID
@@ -27,13 +35,13 @@ const canisterId = stripQuotes(
 );
 
 const dfxNetwork = stripQuotes(
-  hasOwn(runtimeConfig, 'DFX_NETWORK')
-    ? runtimeConfig.DFX_NETWORK
+  readRuntimeValue('DFX_NETWORK')
+    ? readRuntimeValue('DFX_NETWORK')
     : (processEnv.DFX_NETWORK || import.meta.env.DFX_NETWORK || 'ic')
 );
 
 const defaultHost = stripQuotes(
-  runtimeConfig.IC_HOST || (dfxNetwork === 'ic' ? 'https://icp-api.io' : 'http://127.0.0.1:4943')
+  readRuntimeValue('IC_HOST') || (dfxNetwork === 'ic' ? 'https://icp-api.io' : 'http://127.0.0.1:4943')
 );
 
 const unavailable = (methodName) => async () => {
@@ -45,7 +53,6 @@ const unavailable = (methodName) => async () => {
 const createBackendActor = () => {
   if (!canisterId) {
     return {
-      chat: unavailable('chat'),
       createBounty: unavailable('createBounty'),
       getBountyValue: unavailable('getBountyValue'),
       privateAction: unavailable('privateAction'),
