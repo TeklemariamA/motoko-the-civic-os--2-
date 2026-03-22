@@ -15,3 +15,22 @@ services:
       ENABLE_CHATBOT: ${ENABLE_CHATBOT:-false}
     ports:
       - "[::]:8080:80"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: civicos-caddy
+    depends_on:
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - civicos_caddy_data:/data
+      - civicos_caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  civicos_caddy_data:
+  civicos_caddy_config:
