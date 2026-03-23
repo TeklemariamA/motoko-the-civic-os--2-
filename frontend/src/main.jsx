@@ -988,6 +988,14 @@ const App = () => {
   return (
     <div className="flex min-h-screen items-start justify-center bg-gray-50 p-3 sm:items-center sm:p-4 lg:p-6">
       <div className="flex w-full max-w-5xl flex-col overflow-hidden rounded-md bg-white shadow-lg sm:rounded-lg min-h-[90vh] sm:min-h-[80vh] lg:min-h-[70vh]">
+        
+        {/* Global Application Header */}
+        <div className="border-b bg-gray-900 px-4 py-4 sm:px-6">
+          <h1 className="text-xl font-bold tracking-tight text-white">
+            [Insert Civic Common Name] OS
+          </h1>
+        </div>
+
         {/* Tab bar */}
         <div className="overflow-x-auto border-b">
           <div className="flex min-w-max">
