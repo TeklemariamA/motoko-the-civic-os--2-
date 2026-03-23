@@ -32,23 +32,17 @@ const buildShareUrls = (title, text) => {
 
   return {
     x: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
-    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
-    whatsapp: `https://api.whatsapp.com/send?text=${encodedTitle}%20-%20${encodedUrl}`,
-    telegram: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`
   };
 };
 
 const ShareBar = ({ title, text }) => {
   const share = buildShareUrls(title, text);
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500" aria-label="Share links">
+    <div className="mt-6 border-t pt-4 flex flex-wrap items-center gap-2 text-xs text-gray-500" aria-label="Share links">
       <span>Share:</span>
-      <a className="rounded bg-black px-2 py-1 text-white" href={share.x} target="_blank" rel="noopener noreferrer">X</a>
-      <a className="rounded bg-blue-700 px-2 py-1 text-white" href={share.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
-      <a className="rounded bg-blue-600 px-2 py-1 text-white" href={share.facebook} target="_blank" rel="noopener noreferrer">Facebook</a>
-      <a className="rounded bg-green-600 px-2 py-1 text-white" href={share.whatsapp} target="_blank" rel="noopener noreferrer">WhatsApp</a>
-      <a className="rounded bg-sky-600 px-2 py-1 text-white" href={share.telegram} target="_blank" rel="noopener noreferrer">Telegram</a>
+      <a className="rounded bg-black px-3 py-1.5 text-white" href={share.x} target="_blank" rel="noopener noreferrer">X</a>
+      <a className="rounded bg-blue-700 px-3 py-1.5 text-white" href={share.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
     </div>
   );
 };
@@ -164,7 +158,6 @@ const ChatTab = () => {
     <div className="flex h-full flex-col">
       <div className="border-b bg-white p-4">
         <h2 className="text-lg font-semibold text-gray-700">🤖 Civic OS Agent</h2>
-        <ShareBar title="Chat with Civic OS" text="Ask the Civic OS sovereign AI agent" />
       </div>
       {chatHealth !== 'ok' && (
         <div className="bg-yellow-100 text-yellow-800 px-3 py-2 text-sm">
@@ -206,6 +199,9 @@ const ChatTab = () => {
           Send
         </button>
       </form>
+      <div className="px-4 pb-2">
+        <ShareBar title="Civic OS Chat" text="Ask the Civic OS sovereign AI agent" />
+      </div>
     </div>
   );
 };
@@ -248,7 +244,6 @@ const BountiesTab = () => {
     <div className="space-y-6 p-3 sm:p-4">
       <div>
         <h2 className="text-lg font-semibold text-gray-700">Post a Bounty</h2>
-        <ShareBar title="Post a bounty" text="Create a bounty on The Civic OS" />
       </div>
       <form onSubmit={handleCreate} className="space-y-3">
         <input className="w-full rounded border p-2" placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} required />
@@ -261,13 +256,14 @@ const BountiesTab = () => {
       <hr />
       <div>
         <h2 className="text-lg font-semibold text-gray-700">Check Current Value</h2>
-        <ShareBar title="Check bounty value" text="Look up bounty rewards on The Civic OS" />
       </div>
       <form onSubmit={handleQuery} className="flex gap-2">
         <input className="flex-1 rounded border p-2" type="number" placeholder="Bounty ID" value={queryId} onChange={(e) => setQueryId(e.target.value)} required />
         <button type="submit" className="rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600">Check</button>
       </form>
       {result && <p className="text-sm text-gray-600">{result}</p>}
+      
+      <ShareBar title="Civic OS Bounties" text="Post or check bounties on The Civic OS" />
     </div>
   );
 };
@@ -304,7 +300,6 @@ const AuditTab = () => {
     <div className="space-y-6 p-3 sm:p-4">
       <div>
         <h2 className="text-lg font-semibold text-gray-700">Submit Private Action (ZK-Proof)</h2>
-        <ShareBar title="Submit private action" text="Record a private zk-proof action on The Civic OS" />
       </div>
       <form onSubmit={handleSubmit} className="space-y-3">
         <input className="w-full rounded border p-2" placeholder="Proof hash (sha256 of your action)" value={proofHash} onChange={(e) => setProofHash(e.target.value)} required />
@@ -317,7 +312,6 @@ const AuditTab = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-gray-700">Public Audit Log</h2>
-          <ShareBar title="Public audit log" text="Browse the Civic OS public audit log" />
         </div>
         <button onClick={handleFetchLog} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
       </div>
@@ -333,6 +327,7 @@ const AuditTab = () => {
             ))}
           </ul>
       }
+      <ShareBar title="Civic OS Audit" text="Public audit log and zk-actions on The Civic OS" />
     </div>
   );
 };
@@ -379,7 +374,6 @@ const JusticeTab = () => {
     <div className="space-y-6 p-3 sm:p-4">
       <div>
         <h2 className="text-lg font-semibold text-gray-700">File a Case</h2>
-        <ShareBar title="File a case" text="Open a justice case on The Civic OS" />
       </div>
       <form onSubmit={handleFileCase} className="space-y-3">
         <input className="w-full rounded border p-2" placeholder="Plaintiff" value={plaintiff} onChange={(e) => setPlaintiff(e.target.value)} required />
@@ -393,7 +387,6 @@ const JusticeTab = () => {
       <hr />
       <div>
         <h2 className="text-lg font-semibold text-gray-700">Cast Verdict</h2>
-        <ShareBar title="Cast verdict" text="Participate as juror on The Civic OS" />
       </div>
       <form onSubmit={handleCastVerdict} className="space-y-3">
         <input className="w-full rounded border p-2" type="number" placeholder="Case ID" value={caseId} onChange={(e) => setCaseId(e.target.value)} required />
@@ -402,6 +395,8 @@ const JusticeTab = () => {
         <button type="submit" className="rounded bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600">Cast Verdict</button>
       </form>
       {verdictResult && <p className="text-sm text-gray-600">{verdictResult}</p>}
+
+      <ShareBar title="Civic OS Justice" text="File a case or cast a verdict on The Civic OS" />
     </div>
   );
 };
@@ -411,6 +406,7 @@ const MembershipTab = () => {
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [role, setRole] = useState('Citizen');
+  const [consent, setConsent] = useState(false);
   const [enrollStatus, setEnrollStatus] = useState('');
 
   const [lookupName, setLookupName] = useState('');
@@ -420,11 +416,15 @@ const MembershipTab = () => {
 
   const handleEnroll = async (e) => {
     e.preventDefault();
+    if (!consent) {
+      setEnrollStatus('❌ You must agree to the Civic Commons Participation Agreement.');
+      return;
+    }
     setEnrollStatus('Enrolling…');
     try {
       const res = await backend.enrollMember(name, bio, role);
       setEnrollStatus(res.ok ? `✅ ${res.message}` : `❌ ${res.message}`);
-      if (res.ok) { setName(''); setBio(''); setRole('Citizen'); }
+      if (res.ok) { setName(''); setBio(''); setRole('Citizen'); setConsent(false); }
     } catch (err) {
       setEnrollStatus(`❌ Error: ${String(err)}`);
     }
@@ -460,9 +460,8 @@ const MembershipTab = () => {
     <div className="space-y-6 p-3 sm:p-4">
       <div>
         <h2 className="text-lg font-semibold text-gray-700">🪪 Enroll as a Citizen</h2>
-        <ShareBar title="Enroll as a citizen" text="Join The Civic OS as a member" />
       </div>
-      <form onSubmit={handleEnroll} className="space-y-3">
+      <form onSubmit={handleEnroll} className="space-y-4">
         <input className="w-full rounded border p-2" placeholder="Name (unique handle)" value={name} onChange={(e) => setName(e.target.value)} required />
         <textarea className="w-full rounded border p-2" rows={2} placeholder="Bio" value={bio} onChange={(e) => setBio(e.target.value)} required />
         <select className="w-full rounded border p-2" value={role} onChange={(e) => setRole(e.target.value)}>
@@ -471,6 +470,39 @@ const MembershipTab = () => {
           <option value="Builder">Builder</option>
           <option value="Steward">Steward</option>
         </select>
+
+        <div className="rounded border bg-white p-3 text-sm">
+          <label className="block font-medium text-gray-700 mb-1">Government Issued ID (Verification)</label>
+          <input type="file" accept="image/*,.pdf" className="w-full text-gray-600 mb-3" required />
+
+          <label className="block font-medium text-gray-700 mb-1">Snap Live Photo (Record of Enrollee)</label>
+          <input type="file" accept="image/*" capture="user" className="w-full text-gray-600" required />
+        </div>
+
+        <div className="rounded border bg-gray-50 p-4 text-xs text-gray-700 space-y-2 h-48 overflow-y-auto">
+          <h3 className="font-bold text-sm">Member Consent: Civic Commons Participation Agreement</h3>
+          <p><strong>1. Acknowledgment of Open Source Principles</strong><br />
+          By enrolling as a member of the Civic Commons, I acknowledge that I am entering a collaborative environment governed by the principles of Opensourcism. I understand that the source code, data, and documentation provided are collective assets designed for the public good.</p>
+          <p><strong>2. Agreement to Abide by the "Source Code" Rules</strong><br />
+          I hereby agree to strictly adhere to the governing rules embedded within the project’s source code and its associated licenses (e.g., MIT, GNU GPL, or Creative Commons). This includes, but is not limited to:
+          <ul className="list-disc ml-5 mt-1 space-y-1">
+            <li>Attribution: Giving proper credit to original authors and contributors.</li>
+            <li>Transparency: Documenting all modifications and ensuring they remain accessible to the community.</li>
+            <li>Reciprocity: Sharing improvements back to the main branch to ensure the "Civic Commons" continues to grow.</li>
+          </ul>
+          </p>
+          <p><strong>3. Code of Conduct</strong><br />
+          I pledge to maintain a respectful, inclusive, and constructive environment. I understand that my contributions must be free of malicious intent, security vulnerabilities (to the best of my knowledge), and discriminatory content.</p>
+          <p><strong>4. Liability and Ownership</strong><br />
+          I understand that all contributions are made at my own discretion. While I retain the moral rights to my specific contributions, I grant the Civic Commons a perpetual, irrevocable license to use, modify, and distribute my work under the platform’s chosen open-source framework.</p>
+          <p><strong>5. Formal Declaration</strong><br />
+          "I, the undersigned, have read and understood the protocols of civic-so-opensourcism.cloud. I agree to abide by the digital and ethical 'source code' of this community. I accept that failure to comply with these shared rules may result in the suspension of my membership and access to the commons."</p>
+        </div>
+        <label className="flex items-start gap-2 text-sm text-gray-800 cursor-pointer">
+          <input type="checkbox" className="mt-1" checked={consent} onChange={(e) => setConsent(e.target.checked)} required />
+          <span>I agree to the Civic Commons Participation Agreement and Formal Declaration</span>
+        </label>
+
         <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">Enroll</button>
       </form>
       {enrollStatus && <p className="text-sm text-gray-600">{enrollStatus}</p>}
@@ -479,7 +511,6 @@ const MembershipTab = () => {
 
       <div>
         <h2 className="text-lg font-semibold text-gray-700">🔍 Lookup Member</h2>
-        <ShareBar title="Lookup members" text="Browse Civic OS member directory" />
       </div>
       <form onSubmit={handleLookup} className="flex gap-2">
         <input className="flex-1 rounded border p-2" placeholder="Member name" value={lookupName} onChange={(e) => setLookupName(e.target.value)} required />
@@ -503,7 +534,6 @@ const MembershipTab = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-gray-700">👥 All Members</h2>
-          <ShareBar title="Member list" text="View Civic OS members" />
         </div>
         <button onClick={fetchMembers} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
       </div>
@@ -619,10 +649,9 @@ const KnowledgeCommonsTab = () => {
   ];
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col h-full">
       <div className="border-b bg-white p-3">
         <h2 className="text-lg font-semibold text-gray-700">🌐 Knowledge Commons</h2>
-        <ShareBar title="Knowledge Commons" text="Contribute to the Civic OS knowledge commons" />
       </div>
       {/* Sub-tabs */}
       <div className="flex border-b">
@@ -637,7 +666,6 @@ const KnowledgeCommonsTab = () => {
           <>
             <div>
               <h2 className="text-base font-semibold text-gray-700">Commit a Skill</h2>
-              <ShareBar title="Commit a skill" text="Add your skills to the Civic OS commons" />
             </div>
             <p className="text-xs text-gray-400">Education is lifelong — every skill you master is a verifiable commit to the commons.</p>
             <form onSubmit={handleCommitSkill} className="space-y-3">
@@ -651,7 +679,6 @@ const KnowledgeCommonsTab = () => {
             <hr />
             <div>
               <h2 className="text-base font-semibold text-gray-700">Endorse a Skill</h2>
-              <ShareBar title="Endorse a skill" text="Support peers on the Civic OS commons" />
             </div>
             <form onSubmit={handleEndorse} className="space-y-3">
               <input className="w-full rounded border p-2 text-sm" type="number" placeholder="Skill Commit ID" value={endorseId} onChange={(e) => setEndorseId(e.target.value)} required />
@@ -663,7 +690,6 @@ const KnowledgeCommonsTab = () => {
             <hr />
             <div>
               <h2 className="text-base font-semibold text-gray-700">Browse Skills</h2>
-              <ShareBar title="Browse skills" text="See member skills on The Civic OS" />
             </div>
             <form onSubmit={fetchSkills} className="flex gap-2">
               <input className="flex-1 rounded border p-2 text-sm" placeholder="Member name" value={listMember} onChange={(e) => setListMember(e.target.value)} required />
@@ -673,10 +699,6 @@ const KnowledgeCommonsTab = () => {
               ? <p className="text-sm text-gray-500">No skills loaded.</p>
               : <ul className="space-y-2">
                   {skills.map((s) => {
-                        const shareTitle = `Skill Commit #${Number(s.id)} - ${s.skill}`;
-                        const shareText = `${s.member} committed skill \"${s.skill}\" on The Civic OS.`;
-                        const shareUrls = buildShareUrls(shareTitle, shareText);
-
                         return (
                           <li key={Number(s.id)} className="rounded border p-3 text-sm">
                       <div className="flex items-center justify-between">
@@ -689,14 +711,6 @@ const KnowledgeCommonsTab = () => {
                           ? `✅ Endorsed by: ${s.endorsements.join(', ')}`
                           : '— No endorsements yet'}
                       </p>
-                            <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                              <span className="mr-1 text-gray-500">Share:</span>
-                              <a href={shareUrls.x} target="_blank" rel="noopener noreferrer" className="rounded bg-black px-2 py-1 text-white">X</a>
-                              <a href={shareUrls.linkedin} target="_blank" rel="noopener noreferrer" className="rounded bg-blue-700 px-2 py-1 text-white">LinkedIn</a>
-                              <a href={shareUrls.facebook} target="_blank" rel="noopener noreferrer" className="rounded bg-blue-600 px-2 py-1 text-white">Facebook</a>
-                              <a href={shareUrls.whatsapp} target="_blank" rel="noopener noreferrer" className="rounded bg-green-600 px-2 py-1 text-white">WhatsApp</a>
-                              <a href={shareUrls.telegram} target="_blank" rel="noopener noreferrer" className="rounded bg-sky-600 px-2 py-1 text-white">Telegram</a>
-                            </div>
                     </li>
                         );
                       })}
@@ -710,7 +724,6 @@ const KnowledgeCommonsTab = () => {
           <>
             <div>
               <h2 className="text-base font-semibold text-gray-700">Publish Research</h2>
-              <ShareBar title="Publish research" text="Share open research on The Civic OS" />
             </div>
             <p className="text-xs text-gray-400">The Human Source Code — medicine and all public knowledge — belongs to no corporation. Publish openly.</p>
             <form onSubmit={handlePublish} className="space-y-3">
@@ -736,7 +749,6 @@ const KnowledgeCommonsTab = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-semibold text-gray-700">Research Registry</h2>
-                <ShareBar title="Research registry" text="Browse open research on The Civic OS" />
               </div>
               <button onClick={fetchResearch} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
             </div>
@@ -767,7 +779,6 @@ const KnowledgeCommonsTab = () => {
           <>
             <div>
               <h2 className="text-base font-semibold text-gray-700">AI Bill of Rights</h2>
-              <ShareBar title="AI Bill of Rights" text="Read the Civic OS AI Bill of Rights" />
             </div>
             <p className="text-xs text-gray-400 italic">Ratified on the Social Ledger</p>
             <ul className="space-y-4">
@@ -780,6 +791,9 @@ const KnowledgeCommonsTab = () => {
             </ul>
           </>
         )}
+      </div>
+      <div className="p-3 sm:p-4 mt-auto">
+        <ShareBar title="Civic OS Knowledge Commons" text="Contribute to the Civic OS knowledge commons" />
       </div>
     </div>
   );
@@ -868,7 +882,6 @@ const LegislatureTab = () => {
       {/* Propose */}
       <div>
         <h2 className="text-lg font-semibold text-gray-700">📜 Propose a Bill</h2>
-        <ShareBar title="Propose a bill" text="Draft legislation on The Civic OS" />
       </div>
       <form onSubmit={handlePropose} className="space-y-3">
         <input className="w-full rounded border p-2" placeholder="Bill title" value={title} onChange={(e) => setTitle(e.target.value)} required />
@@ -884,7 +897,6 @@ const LegislatureTab = () => {
       {/* Vote */}
       <div>
         <h2 className="text-lg font-semibold text-gray-700">🗳️ Cast Vote <span className="text-sm font-normal text-gray-500">(50+1 rule)</span></h2>
-        <ShareBar title="Vote on bills" text="Cast a vote on Civic OS legislation" />
       </div>
       <p className="text-xs text-gray-400">A bill commits to the Social Ledger once Yes votes exceed 50% of all participating votes.</p>
       <form onSubmit={handleVote} className="space-y-3">
@@ -904,7 +916,6 @@ const LegislatureTab = () => {
       {/* Fork */}
       <div>
         <h2 className="text-lg font-semibold text-gray-700">🍴 Fork a Bill</h2>
-        <ShareBar title="Fork a bill" text="Create a forked bill on The Civic OS" />
       </div>
       <p className="text-xs text-gray-400">Create an amended variant of an existing bill. The fork starts fresh with 0 votes.</p>
       <form onSubmit={handleFork} className="space-y-3">
@@ -922,7 +933,6 @@ const LegislatureTab = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-gray-700">📋 All Bills</h2>
-          <ShareBar title="All bills" text="Browse Civic OS legislation" />
         </div>
         <button onClick={fetchBills} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
       </div>
@@ -962,6 +972,8 @@ const LegislatureTab = () => {
             })}
           </ul>
       }
+
+      <ShareBar title="Civic OS Legislature" text="Propose, code, or vote on legislation on The Civic OS" />
     </div>
   );
 };
