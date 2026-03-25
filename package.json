@@ -7,5 +7,10 @@
     "build": "npm run build --workspaces --if-present",
     "start": "npm run dev --workspaces --if-present"
   },
-  "workspaces": ["frontend"]
+  "workspaces": [
+    "frontend"
+  ],
+  "dependencies": {
+    "@holochain/client": "^0.20.4-rc.0"
+  }
 }

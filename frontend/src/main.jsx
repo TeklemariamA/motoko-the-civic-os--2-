@@ -32,7 +32,10 @@ const buildShareUrls = (title, text) => {
 
   return {
     x: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
-    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+    whatsapp: `https://api.whatsapp.com/send?text=${encodedText}%20${encodedUrl}`,
+    telegram: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`
   };
 };
 
@@ -43,6 +46,9 @@ const ShareBar = ({ title, text }) => {
       <span>Share:</span>
       <a className="rounded bg-black px-3 py-1.5 text-white" href={share.x} target="_blank" rel="noopener noreferrer">X</a>
       <a className="rounded bg-blue-700 px-3 py-1.5 text-white" href={share.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      <a className="rounded bg-blue-600 px-3 py-1.5 text-white" href={share.facebook} target="_blank" rel="noopener noreferrer">Facebook</a>
+      <a className="rounded bg-green-600 px-3 py-1.5 text-white" href={share.whatsapp} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+      <a className="rounded bg-blue-500 px-3 py-1.5 text-white" href={share.telegram} target="_blank" rel="noopener noreferrer">Telegram</a>
     </div>
   );
 };
@@ -984,16 +990,21 @@ const TABS = CHATBOT_ENABLED ? ['Chat', ...BASE_TABS] : BASE_TABS;
 
 const App = () => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
+  const [osName, setOsName] = useState('[Insert Civic Common Name]');
 
   return (
     <div className="flex min-h-screen items-start justify-center bg-gray-50 p-3 sm:items-center sm:p-4 lg:p-6">
       <div className="flex w-full max-w-5xl flex-col overflow-hidden rounded-md bg-white shadow-lg sm:rounded-lg min-h-[90vh] sm:min-h-[80vh] lg:min-h-[70vh]">
         
         {/* Global Application Header */}
-        <div className="border-b bg-gray-900 px-4 py-4 sm:px-6">
-          <h1 className="text-xl font-bold tracking-tight text-white">
-            [Insert Civic Common Name] OS
-          </h1>
+        <div className="border-b bg-blue-600 px-4 py-4 sm:px-6 flex items-center">
+          <input 
+            type="text"
+            className="text-xl font-bold tracking-tight text-white bg-transparent border-none outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 rounded px-2 w-auto max-w-[50%]"
+            value={osName}
+            onChange={(e) => setOsName(e.target.value)}
+          />
+          <h1 className="text-xl font-bold tracking-tight text-white ml-2">OS</h1>
         </div>
 
         {/* Tab bar */}

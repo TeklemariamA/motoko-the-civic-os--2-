@@ -34,14 +34,16 @@ const canisterId = stripQuotes(
     )
 );
 
+const isLocal = typeof window !== 'undefined' ? window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' : false;
+
 const dfxNetwork = stripQuotes(
   readRuntimeValue('DFX_NETWORK')
     ? readRuntimeValue('DFX_NETWORK')
-    : (processEnv.DFX_NETWORK || import.meta.env.DFX_NETWORK || 'ic')
+    : (processEnv.DFX_NETWORK || import.meta.env?.DFX_NETWORK || (isLocal ? 'local' : 'ic'))
 );
 
 const defaultHost = stripQuotes(
-  readRuntimeValue('IC_HOST') || (dfxNetwork === 'ic' ? 'https://icp-api.io' : 'http://127.0.0.1:4943')
+  readRuntimeValue('IC_HOST') || (dfxNetwork === 'ic' ? 'https://icp-api.io' : 'http://localhost:4943')
 );
 
 const unavailable = (methodName) => async () => {
