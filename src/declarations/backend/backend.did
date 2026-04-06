@@ -1,0 +1,155 @@
+type SkillCommit = 
+ record {
+   created_at: int;
+   endorsements: vec text;
+   evidence_hash: text;
+   id: nat;
+   member: text;
+   skill: text;
+ };
+type ResearchRecord = 
+ record {
+   abstract_text: text;
+   author: text;
+   created_at: int;
+   data_hash: text;
+   domain: text;
+   id: nat;
+   title: text;
+ };
+type Member = 
+ record {
+   bio: text;
+   is_active: bool;
+   joined_at: int;
+   merit: int;
+   name: text;
+   role: text;
+ };
+type Bill = 
+ record {
+   abstain_votes: nat;
+   author: text;
+   body: text;
+   category: text;
+   created_at: int;
+   forked_from: opt nat;
+   id: nat;
+   no_votes: nat;
+   status: text;
+   title: text;
+   yes_votes: nat;
+ };
+type AuditEntry = 
+ record {
+   action: text;
+   proof_signature: text;
+   timestamp: int;
+   verified: bool;
+ };
+service : {
+  /// Cast a verdict as a juror.
+  /// Once all jurors have voted, Schelling-point consensus resolves the case
+  /// and redistributes merit to honest jurors.
+  /// Returns null if the case does not exist or the caller is not an assigned juror.
+  castVerdict: (case_id: nat, juror_name: text, verdict: text) ->
+   (opt record {
+          message: text;
+          verdict: text;
+        });
+  /// Cast a vote on an active bill.
+  /// choice must be "yes", "no", or "abstain".
+  /// A bill automatically commits (passes) once yes votes strictly exceed 50 % of
+  /// all participating votes (yes + no), implementing the 50+1 majority rule.
+  /// Returns null if the bill is not found or the citizen has already voted.
+  castVote: (bill_id: nat, citizen: text, choice: text) ->
+   (opt record {
+          abstain: nat;
+          message: text;
+          no: nat;
+          status: text;
+          yes: nat;
+        });
+  /// Commit a verifiable skill to the Knowledge Commons.
+  /// Any enrolled member can commit skills; evidence is stored as a content hash.
+  /// Returns null if the member is not enrolled.
+  commitSkill: (member: text, skill: text, evidence: text) ->
+   (opt record {
+          message: text;
+          skill_id: nat;
+        });
+  /// Post a new time-escalating bounty to the grid.
+  createBounty: (description: text, base_reward: float64, urgency:
+   float64) -> (record {
+                  bounty_id: nat;
+                  message: text;
+                });
+  /// Endorse a skill commit on behalf of another member.
+  /// A member cannot endorse their own skill. Returns null if skill or endorser not found.
+  endorseSkill: (skill_id: nat, endorser: text) ->
+   (opt record {
+          endorsement_count: nat;
+          message: text;
+          skill_id: nat;
+        });
+  /// Enroll a new citizen in the Social OS.
+  /// Returns an error message if the name is already taken.
+  enrollMember: (name: text, bio: text, role: text) ->
+   (record {
+      message: text;
+      ok: bool;
+    });
+  /// File a new case and assign jurors via merit-weighted sortition.
+  fileCase: (plaintiff: text, defendant: text, category: text, evidence:
+   text) -> (record {
+               case_id: nat;
+               jury: vec text;
+             });
+  /// Fork an existing bill into a new variant with amended title and body.
+  /// The fork starts with 0 votes and status "active".
+  /// Returns null if the original bill does not exist.
+  forkBill: (original_id: nat, title: text, body: text, author: text) ->
+   (opt record {
+          bill_id: nat;
+          message: text;
+        });
+  /// Return a single bill by ID.
+  getBill: (bill_id: nat) -> (opt Bill) query;
+  /// Return the current (time-escalated) reward for a bounty.
+  /// Returns null if the bounty does not exist.
+  getBountyValue: (bounty_id: nat) ->
+   (opt record {
+          current_reward: float64;
+          id: nat;
+        }) query;
+  /// Return a member profile by name.
+  getMember: (name: text) -> (opt Member) query;
+  /// Return all bills (active, passed, rejected).
+  listBills: () -> (vec Bill) query;
+  /// Return all enrolled members.
+  listMembers: () -> (vec Member) query;
+  /// Return all open-science research records.
+  listResearch: () -> (vec ResearchRecord) query;
+  /// Return all skill commits for a given member.
+  listSkillCommits: (member: text) -> (vec SkillCommit) query;
+  /// Submit a zero-knowledge proof of a private action.
+  /// The action is recorded on the public ledger under the proof hash, not the user's identity.
+  privateAction: (proof_hash: text, action_type: text) ->
+   (record {message: text;});
+  /// Propose a new bill for the community to vote on.
+  proposeBill: (title: text, body: text, author: text, category: text) ->
+   (record {
+      bill_id: nat;
+      message: text;
+    });
+  /// Return the full public audit log.
+  /// Anyone can see WHAT happened, but identities are hidden behind proof hashes.
+  publicLog: () -> (vec AuditEntry) query;
+  /// Publish a research record to the open-science commons.
+  /// Per the Human Source Code principle: all publicly relevant knowledge is immediately public.
+  publishResearch: (title: text, author: text, abstract_text: text, data:
+   text, domain: text) -> (record {
+                             message: text;
+                             research_id: nat;
+                           });
+}
