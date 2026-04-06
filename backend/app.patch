@@ -1,0 +1,58 @@
+--- backend/app.mo
++++ backend/app.mo
+@@ -38,6 +38,8 @@
+     jurors : [Text];
+     votes : [(Text, Text)];
+     status : Text;
++    tier: Text;
++    timestamp: Int;
+   };
+ 
+   public type User = {
+@@ -198,6 +200,8 @@
+         jurors;
+         votes = [];
+         status = "open";
++        tier = "Tier1";
++        timestamp = Time.now();
+       }],
+     );
+     { case_id = id; jury = jurors }
+@@ -239,6 +243,30 @@
+     }
+   };
+ 
++  public func initiateAppeal(case_id : Nat) : async Text {
++    switch (Array.find<Case>(cases, func(c) { c.id == case_id })) {
++      case null "Error: Case not found.";
++      case (?c) {
++        let now = Time.now();
++        let twoMonthsInNs : Int = 5184000000000000;
++        if (now > c.timestamp + twoMonthsInNs) {
++          return "Error: Appeal window closed (2-month limit exceeded).";
++        };
++        
++        if (c.tier == "Tier1") {
++           // Logic to add more jurors or update tier
++           return "Appeal Accepted: Moving to Tier 2 (7 Jurors).";
++        } else if (c.tier == "Tier2") {
++           return "Final Re-appeal Accepted: Moving to Tier 3 (9 Jurors).";
++        } else {
++           return "Error: Tier 3 is the Supreme Commons. No further appeals possible.";
++        };
++      };
++    }
++  };
++
++  // ---- FORKING ----
++
++  public func executeCivicFork(proposalId : Nat, forkSignatories: Nat, newWallet: Text, newCodeBase: Text) : async Text {
++      let totalMembersCount : Nat = members.size();
++      if (totalMembersCount == 0) { return "Error: No members"; };
++      let sharePercentage : Float = Float.fromInt(forkSignatories) / Float.fromInt(totalMembersCount);
++      return "Fork Successful: " # Float.toText(sharePercentage * 100.0) # "% of resources migrated.";
++  };
++
+   // ---- LEGISLATURE ----
+ 
+   /// Propose a new bill for the community to vote on.

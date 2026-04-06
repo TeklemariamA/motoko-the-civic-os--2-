@@ -344,6 +344,13 @@ const JusticeTab = () => {
   const [defendant, setDefendant] = useState('');
   const [category, setCategory] = useState('');
   const [evidence, setEvidence] = useState('');
+  const [appealCaseId, setAppealCaseId] = useState('');
+  const [appealResult, setAppealResult] = useState(null);
+  const [forkProposalId, setForkProposalId] = useState('');
+  const [forkSignatories, setForkSignatories] = useState('');
+  const [forkWallet, setForkWallet] = useState('');
+  const [forkCodeBase, setForkCodeBase] = useState('');
+  const [forkResult, setForkResult] = useState(null);
   const [caseResult, setCaseResult] = useState(null);
 
   const [caseId, setCaseId] = useState('');
@@ -360,6 +367,26 @@ const JusticeTab = () => {
       setPlaintiff(''); setDefendant(''); setCategory(''); setEvidence('');
     } catch (err) {
       setCaseResult(`❌ Error: ${String(err)}`);
+    }
+  };
+
+  const handleAppeal = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await backend.initiateAppeal(BigInt(appealCaseId));
+      setAppealResult(res);
+    } catch (err) {
+      setAppealResult("Error: " + err.message);
+    }
+  };
+
+  const handleExecuteFork = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await backend.executeCivicFork(BigInt(forkProposalId), BigInt(forkSignatories), forkWallet, forkCodeBase);
+      setForkResult(res);
+    } catch (err) {
+      setForkResult("Error: " + err.message);
     }
   };
 
@@ -401,6 +428,30 @@ const JusticeTab = () => {
         <button type="submit" className="rounded bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600">Cast Verdict</button>
       </form>
       {verdictResult && <p className="text-sm text-gray-600">{verdictResult}</p>}
+
+      <hr />
+      <div>
+        <h2 className="text-lg font-semibold text-gray-700">Initiate Appeal</h2>
+      </div>
+      <form onSubmit={handleAppeal} className="space-y-3">
+        <input className="w-full rounded border p-2" type="number" placeholder="Case ID" value={appealCaseId} onChange={(e) => setAppealCaseId(e.target.value)} required />
+        <button type="submit" className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">Initiate Appeal</button>
+      </form>
+      {appealResult && <p className="text-sm text-gray-600">{appealResult}</p>}
+
+      <hr />
+      <div>
+        <h2 className="text-lg font-semibold text-gray-700">Execute Civic Fork</h2>
+      </div>
+      <form onSubmit={handleExecuteFork} className="space-y-3">
+        <input className="w-full rounded border p-2" type="number" placeholder="Proposal ID" value={forkProposalId} onChange={(e) => setForkProposalId(e.target.value)} required />
+        <input className="w-full rounded border p-2" type="number" placeholder="Signatories Count" value={forkSignatories} onChange={(e) => setForkSignatories(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder="New Wallet Address" value={forkWallet} onChange={(e) => setForkWallet(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder="New Code Base URL" value={forkCodeBase} onChange={(e) => setForkCodeBase(e.target.value)} required />
+        <button type="submit" className="rounded bg-purple-500 px-4 py-2 text-white hover:bg-purple-600">Execute Fork</button>
+      </form>
+      {forkResult && <p className="text-sm text-gray-600">{forkResult}</p>}
+
 
       <ShareBar title="Civic OS Justice" text="File a case or cast a verdict on The Civic OS" />
     </div>

@@ -40,6 +40,8 @@ persistent actor CivicOS {
     jurors : [Text];
     votes : [(Text, Text)];
     status : Text;
+    tier : Text;
+    timestamp : Int;
   };
 
   public type User = {
@@ -201,6 +203,8 @@ persistent actor CivicOS {
         jurors;
         votes = [];
         status = "open";
+        tier = "Tier1";
+        timestamp = Time.now();
       }],
     );
     { case_id = id; jury = jurors }
@@ -234,6 +238,8 @@ persistent actor CivicOS {
           jurors = c.jurors;
           votes = newVotes;
           status = newStatus;
+          tier = c.tier;
+          timestamp = c.timestamp;
         };
         cases := Array.map<Case, Case>(
           cases,
@@ -248,6 +254,62 @@ persistent actor CivicOS {
         }
       };
     }
+  };
+
+  // ---- LEGISLATURE ----
+
+  public func initiateAppeal(case_id : Nat) : async Text {
+    switch (Array.find<Case>(cases, func(c) { c.id == case_id })) {
+      case null "Error: Case not found.";
+      case (?c) {
+        let now = Time.now();
+        let twoMonthsInNs : Int = 5184000000000000;
+        if (now > c.timestamp + twoMonthsInNs) {
+           return "Error: Appeal window closed (2-month limit exceeded).";
+        };
+        
+        let oldTier = c.tier;
+        let newTier = if (oldTier == "Tier1") "Tier2" 
+                      else if (oldTier == "Tier2") "Tier3" 
+                      else "Tier3";
+                      
+        if (oldTier == "Tier3") {
+           return "Error: Tier 3 is the Supreme Commons. No further appeals possible.";
+        };
+
+        let updated : Case = {
+          id = c.id;
+          category = c.category;
+          plaintiff = c.plaintiff;
+          defendant = c.defendant;
+          evidence_hash = c.evidence_hash;
+          jurors = c.jurors;
+          votes = c.votes;
+          status = c.status;
+          tier = newTier;
+          timestamp = c.timestamp;
+        };
+        cases := Array.map<Case, Case>(
+          cases,
+          func(c2) { if (c2.id == case_id) updated else c2 },
+        );
+
+        if (oldTier == "Tier1") {
+           return "Appeal Accepted: Moving to Tier 2 (7 Jurors).";
+        } else {
+           return "Final Re-appeal Accepted: Moving to Tier 3 (9 Jurors).";
+        };
+      };
+    }
+  };
+
+  // ---- FORKING ----
+
+  public func executeCivicFork(proposalId : Nat, forkSignatories: Nat, newWallet: Text, newCodeBase: Text) : async Text {
+      let totalMembersCount : Nat = users.size();
+      if (totalMembersCount == 0) { return "Error: No members"; };
+      let sharePercentage : Float = Float.fromInt(forkSignatories) / Float.fromInt(totalMembersCount);
+      return "Fork Successful: " # Float.toText(sharePercentage * 100.0) # "% of resources migrated.";
   };
 
   // ---- LEGISLATURE ----
