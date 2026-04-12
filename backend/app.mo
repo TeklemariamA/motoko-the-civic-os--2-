@@ -9,6 +9,12 @@ import Nat32 "mo:base/Nat32";
 import Float "mo:base/Float";
 import Int "mo:base/Int";
 import Blob "mo:base/Blob";
+import Principal "mo:base/Principal";
+import Nat8 "mo:base/Nat8";
+import Nat64 "mo:base/Nat64";
+import Result "mo:base/Result";
+import Error "mo:base/Error";
+// Runtime not needed or should use assert false
 
 persistent actor CivicOS {
 
@@ -580,5 +586,106 @@ persistent actor CivicOS {
         },
       );
     };
+  };
+
+  // ==========================================
+  // --- ckBTC Integration Types & Logic ---
+  // ==========================================
+
+  public type Account = { owner : Principal; subaccount : ?Blob };
+
+  public type TransferArgs = {
+    from_subaccount : ?Blob; to : Account; amount : Nat; fee : ?Nat; memo : ?Blob; created_at_time : ?Nat64;
+  };
+  public type TransferResult = { #Ok : Nat; #Err : TransferError };
+  public type TransferError = {
+    #BadFee : { expected_fee : Nat }; #BadBurn : { min_burn_amount : Nat }; #InsufficientFunds : { balance : Nat };
+    #TooOld; #CreatedInFuture : { ledger_time : Nat64 }; #Duplicate : { duplicate_of : Nat };
+    #TemporarilyUnavailable; #GenericError : { error_code : Nat; message : Text };
+  };
+
+  public type UpdateBalanceResult = { #Ok : [UtxoStatus]; #Err : UpdateBalanceError };
+  public type UtxoStatus = {
+    #ValueTooSmall : Utxo; #Tainted : Utxo; #Checked : Utxo;
+    #Minted : { block_index : Nat64; minted_amount : Nat64; utxo : Utxo };
+  };
+  public type Utxo = { outpoint : { txid : Blob; vout : Nat32 }; value : Nat64; height : Nat32 };
+  public type UpdateBalanceError = {
+    #NoNewUtxos : { required_confirmations : Nat32; pending_utxos : ?[PendingUtxo]; current_confirmations : ?Nat32 };
+    #AlreadyProcessing; #TemporarilyUnavailable : Text; #GenericError : { error_code : Nat64; error_message : Text };
+  };
+  public type PendingUtxo = { outpoint : { txid : Blob; vout : Nat32 }; value : Nat64; confirmations : Nat32 };
+
+  public type ApproveArgs = {
+    from_subaccount : ?Blob; spender : Account; amount : Nat; expected_allowance : ?Nat; expires_at : ?Nat64; fee : ?Nat; memo : ?Blob; created_at_time : ?Nat64;
+  };
+  public type ApproveError = {
+    #BadFee : { expected_fee : Nat }; #InsufficientFunds : { balance : Nat }; #AllowanceChanged : { current_allowance : Nat };
+    #Expired : { ledger_time : Nat64 }; #TooOld; #CreatedInFuture : { ledger_time : Nat64 }; #Duplicate : { duplicate_of : Nat };
+    #TemporarilyUnavailable; #GenericError : { error_code : Nat; message : Text };
+  };
+
+  public type RetrieveBtcWithApprovalArgs = { address : Text; amount : Nat64; from_subaccount : ?Blob };
+  public type RetrieveBtcResult = { #Ok : { block_index : Nat64 }; #Err : RetrieveBtcError };
+  public type RetrieveBtcError = {
+    #MalformedAddress : Text; #AlreadyProcessing; #AmountTooLow : Nat64; #InsufficientFunds : { balance : Nat64 };
+    #InsufficientAllowance : { allowance : Nat64 }; #TemporarilyUnavailable : Text; #GenericError : { error_code : Nat64; error_message : Text };
+  };
+
+  // Remote canister references (Mainnet)
+  transient let ckbtcLedger : actor {
+    icrc1_transfer : shared (TransferArgs) -> async TransferResult;
+    icrc1_balance_of : shared query (Account) -> async Nat;
+    icrc1_fee : shared query () -> async Nat;
+    icrc2_approve : shared (ApproveArgs) -> async { #Ok : Nat; #Err : ApproveError };
+  } = actor "mxzaz-hqaaa-aaaar-qaada-cai";
+
+  transient let ckbtcMinter : actor {
+    get_btc_address : shared ({ owner : ?Principal; subaccount : ?Blob }) -> async Text;
+    update_balance : shared ({ owner : ?Principal; subaccount : ?Blob }) -> async UpdateBalanceResult;
+    retrieve_btc_with_approval : shared (RetrieveBtcWithApprovalArgs) -> async RetrieveBtcResult;
+  } = actor "mqygn-kiaaa-aaaar-qaadq-cai";
+
+  private func principalToSubaccount(p : Principal) : Blob {
+    let bytes = Blob.toArray(Principal.toBlob(p));
+    let size = bytes.size();
+    let sub = Array.tabulate<Nat8>(32, func(i : Nat) : Nat8 {
+      if (i == 0) { Nat8.fromNat(size) } else if (i <= size) { bytes[i - 1] } else { 0 }
+    });
+    Blob.fromArray(sub)
+  };
+
+  public shared ({ caller }) func getBtcDepositAddress() : async Text {
+    if (Principal.isAnonymous(caller)) { assert false };
+    let subaccount = principalToSubaccount(caller);
+    await ckbtcMinter.get_btc_address({ owner = ?Principal.fromActor(CivicOS); subaccount = ?subaccount })
+  };
+
+  public shared ({ caller }) func checkBtcDeposit() : async UpdateBalanceResult {
+    if (Principal.isAnonymous(caller)) { assert false };
+    let subaccount = principalToSubaccount(caller);
+    await ckbtcMinter.update_balance({ owner = ?Principal.fromActor(CivicOS); subaccount = ?subaccount })
+  };
+
+  public shared ({ caller }) func getCkbtcBalance() : async Nat {
+    if (Principal.isAnonymous(caller)) { assert false };
+    let subaccount = principalToSubaccount(caller);
+    await ckbtcLedger.icrc1_balance_of({ owner = Principal.fromActor(CivicOS); subaccount = ?subaccount })
+  };
+
+  public shared ({ caller }) func withdrawBtc(btcAddress : Text, amount : Nat64) : async RetrieveBtcResult {
+    if (Principal.isAnonymous(caller)) { assert false };
+    let fromSubaccount = principalToSubaccount(caller);
+    let approveResult = await ckbtcLedger.icrc2_approve({
+      from_subaccount = ?fromSubaccount;
+      spender = { owner = Principal.fromText("mqygn-kiaaa-aaaar-qaadq-cai"); subaccount = null };
+      amount = Nat64.toNat(amount) + 10;
+      expected_allowance = null; expires_at = null; fee = ?10; memo = null; created_at_time = null;
+    });
+    switch (approveResult) {
+      case (#Err(e)) { return #Err(#GenericError({ error_code = 0; error_message = "Approve for minter failed" })) };
+      case (#Ok(_)) {};
+    };
+    await ckbtcMinter.retrieve_btc_with_approval({ address = btcAddress; amount = amount; from_subaccount = ?fromSubaccount })
   };
 }

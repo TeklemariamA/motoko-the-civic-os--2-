@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { backend } from './declarations/backend/index.js';
+import { initAuth, login, logout, createAuthenticatedActor } from './auth.js';
 import botImg from '/bot.svg';
 import userImg from '/user.svg';
 import '/index.css';
@@ -1036,26 +1037,78 @@ const LegislatureTab = () => {
 };
 
 // ---- Root App ----
-const BASE_TABS = ['Bounties', 'Audit', 'Justice', 'Membership', 'Commons', 'Legislature'];
+import { CkbtcFaucet } from './CkbtcFaucet.jsx';
+
+const BASE_TABS = ['Bounties', 'Audit', 'Justice', 'Membership', 'Commons', 'Legislature', 'ckBTC'];
 const TABS = CHATBOT_ENABLED ? ['Chat', ...BASE_TABS] : BASE_TABS;
 
 const App = () => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [osName, setOsName] = useState('[Insert Civic Common Name]');
+  const [identity, setIdentity] = useState(null);
+
+  useEffect(() => {
+    initAuth().then(client => {
+      if (client?.isAuthenticated && client.isAuthenticated()) {
+        handleIdentity(client.getIdentity());
+      }
+    }).catch(console.error);
+  }, []);
+
+  const handleIdentity = async (id) => {
+    setIdentity(id);
+    const authActor = await createAuthenticatedActor(id);
+    Object.assign(backend, authActor);
+  };
+
+  const handleLogin = async () => {
+    try {
+      const id = await login();
+      handleIdentity(id);
+    } catch (e) {
+      console.error('Login failed:', e);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setIdentity(null);
+    window.location.reload();
+  };
 
   return (
     <div className="flex min-h-screen items-start justify-center bg-gray-50 p-3 sm:items-center sm:p-4 lg:p-6">
       <div className="flex w-full max-w-5xl flex-col overflow-hidden rounded-md bg-white shadow-lg sm:rounded-lg min-h-[90vh] sm:min-h-[80vh] lg:min-h-[70vh]">
         
         {/* Global Application Header */}
-        <div className="border-b bg-blue-600 px-4 py-4 sm:px-6 flex items-center">
-          <input 
-            type="text"
-            className="text-xl font-bold tracking-tight text-white bg-transparent border-none outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 rounded px-2 w-auto max-w-[50%]"
-            value={osName}
-            onChange={(e) => setOsName(e.target.value)}
-          />
-          <h1 className="text-xl font-bold tracking-tight text-white ml-2">OS</h1>
+        <div className="border-b bg-blue-600 px-4 py-4 sm:px-6 flex items-center justify-between">
+          <div className="flex items-center">
+            <input 
+              type="text"
+              className="text-xl font-bold tracking-tight text-white bg-transparent border-none outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 rounded px-2 w-auto max-w-[50%]"
+              value={osName}
+              onChange={(e) => setOsName(e.target.value)}
+            />
+            <h1 className="text-xl font-bold tracking-tight text-white ml-2">OS</h1>
+          </div>
+          <div>
+            {!identity ? (
+              <button 
+                onClick={handleLogin} 
+                className="bg-white text-blue-600 hover:bg-gray-100 px-3 py-1 rounded shadow text-sm font-semibold whitespace-nowrap"
+              >
+                Login II
+              </button>
+            ) : (
+              <button 
+                onClick={handleLogout} 
+                className="bg-blue-800 text-white hover:bg-blue-900 px-3 py-1 rounded shadow text-sm font-semibold whitespace-nowrap"
+                title={identity.getPrincipal().toText()}
+              >
+                Logout {identity.getPrincipal().toText().slice(0, 5)}...
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Tab bar */}
@@ -1086,6 +1139,7 @@ const App = () => {
           {activeTab === 'Membership'  && <MembershipTab />}
           {activeTab === 'Commons'     && <KnowledgeCommonsTab />}
           {activeTab === 'Legislature' && <LegislatureTab />}
+          {activeTab === 'ckBTC'       && <CkbtcFaucet />}
         </div>
       </div>
     </div>
