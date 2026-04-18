@@ -1,4 +1,41 @@
 export const idlFactory = ({ IDL }) => {
+  const Utxo = IDL.Record({
+    'height' : IDL.Nat32,
+    'value' : IDL.Nat64,
+    'outpoint' : IDL.Record({ 'txid' : IDL.Vec(IDL.Nat8), 'vout' : IDL.Nat32 }),
+  });
+  const UtxoStatus = IDL.Variant({
+    'ValueTooSmall' : Utxo,
+    'Tainted' : Utxo,
+    'Minted' : IDL.Record({
+      'minted_amount' : IDL.Nat64,
+      'block_index' : IDL.Nat64,
+      'utxo' : Utxo,
+    }),
+    'Checked' : Utxo,
+  });
+  const PendingUtxo = IDL.Record({
+    'confirmations' : IDL.Nat32,
+    'value' : IDL.Nat64,
+    'outpoint' : IDL.Record({ 'txid' : IDL.Vec(IDL.Nat8), 'vout' : IDL.Nat32 }),
+  });
+  const UpdateBalanceError = IDL.Variant({
+    'GenericError' : IDL.Record({
+      'error_message' : IDL.Text,
+      'error_code' : IDL.Nat64,
+    }),
+    'TemporarilyUnavailable' : IDL.Text,
+    'AlreadyProcessing' : IDL.Null,
+    'NoNewUtxos' : IDL.Record({
+      'required_confirmations' : IDL.Nat32,
+      'pending_utxos' : IDL.Opt(IDL.Vec(PendingUtxo)),
+      'current_confirmations' : IDL.Opt(IDL.Nat32),
+    }),
+  });
+  const UpdateBalanceResult = IDL.Variant({
+    'Ok' : IDL.Vec(UtxoStatus),
+    'Err' : UpdateBalanceError,
+  });
   const Bill = IDL.Record({
     'id' : IDL.Nat,
     'status' : IDL.Text,
@@ -43,6 +80,22 @@ export const idlFactory = ({ IDL }) => {
     'proof_signature' : IDL.Text,
     'timestamp' : IDL.Int,
   });
+  const RetrieveBtcError = IDL.Variant({
+    'MalformedAddress' : IDL.Text,
+    'GenericError' : IDL.Record({
+      'error_message' : IDL.Text,
+      'error_code' : IDL.Nat64,
+    }),
+    'TemporarilyUnavailable' : IDL.Text,
+    'InsufficientAllowance' : IDL.Record({ 'allowance' : IDL.Nat64 }),
+    'AlreadyProcessing' : IDL.Null,
+    'AmountTooLow' : IDL.Nat64,
+    'InsufficientFunds' : IDL.Record({ 'balance' : IDL.Nat64 }),
+  });
+  const RetrieveBtcResult = IDL.Variant({
+    'Ok' : IDL.Record({ 'block_index' : IDL.Nat64 }),
+    'Err' : RetrieveBtcError,
+  });
   return IDL.Service({
     'castVerdict' : IDL.Func(
         [IDL.Nat, IDL.Text, IDL.Text],
@@ -64,6 +117,7 @@ export const idlFactory = ({ IDL }) => {
         ],
         [],
       ),
+    'checkBtcDeposit' : IDL.Func([], [UpdateBalanceResult], []),
     'commitSkill' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text],
         [IDL.Opt(IDL.Record({ 'skill_id' : IDL.Nat, 'message' : IDL.Text }))],
@@ -92,6 +146,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Record({ 'ok' : IDL.Bool, 'message' : IDL.Text })],
         [],
       ),
+    'executeCivicFork' : IDL.Func(
+        [IDL.Nat, IDL.Nat, IDL.Text, IDL.Text],
+        [IDL.Text],
+        [],
+      ),
     'fileCase' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
         [IDL.Record({ 'jury' : IDL.Vec(IDL.Text), 'case_id' : IDL.Nat })],
@@ -112,7 +171,10 @@ export const idlFactory = ({ IDL }) => {
         ],
         ['query'],
       ),
+    'getBtcDepositAddress' : IDL.Func([], [IDL.Text], []),
+    'getCkbtcBalance' : IDL.Func([], [IDL.Nat], []),
     'getMember' : IDL.Func([IDL.Text], [IDL.Opt(Member)], ['query']),
+    'initiateAppeal' : IDL.Func([IDL.Nat], [IDL.Text], []),
     'listBills' : IDL.Func([], [IDL.Vec(Bill)], ['query']),
     'listMembers' : IDL.Func([], [IDL.Vec(Member)], ['query']),
     'listResearch' : IDL.Func([], [IDL.Vec(ResearchRecord)], ['query']),
@@ -137,6 +199,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Record({ 'research_id' : IDL.Nat, 'message' : IDL.Text })],
         [],
       ),
+    'withdrawBtc' : IDL.Func([IDL.Text, IDL.Nat64], [RetrieveBtcResult], []),
   });
 };
 export const init = ({ IDL }) => { return []; };

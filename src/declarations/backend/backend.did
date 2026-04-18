@@ -1,3 +1,43 @@
+type UtxoStatus = 
+ variant {
+   Checked: Utxo;
+   Minted: record {
+             block_index: nat64;
+             minted_amount: nat64;
+             utxo: Utxo;
+           };
+   Tainted: Utxo;
+   ValueTooSmall: Utxo;
+ };
+type Utxo = 
+ record {
+   height: nat32;
+   outpoint: record {
+               txid: blob;
+               vout: nat32;
+             };
+   value: nat64;
+ };
+type UpdateBalanceResult = 
+ variant {
+   Err: UpdateBalanceError;
+   Ok: vec UtxoStatus;
+ };
+type UpdateBalanceError = 
+ variant {
+   AlreadyProcessing;
+   GenericError: record {
+                   error_code: nat64;
+                   error_message: text;
+                 };
+   NoNewUtxos:
+    record {
+      current_confirmations: opt nat32;
+      pending_utxos: opt vec PendingUtxo;
+      required_confirmations: nat32;
+    };
+   TemporarilyUnavailable: text;
+ };
 type SkillCommit = 
  record {
    created_at: int;
@@ -6,6 +46,24 @@ type SkillCommit =
    id: nat;
    member: text;
    skill: text;
+ };
+type RetrieveBtcResult = 
+ variant {
+   Err: RetrieveBtcError;
+   Ok: record {block_index: nat64;};
+ };
+type RetrieveBtcError = 
+ variant {
+   AlreadyProcessing;
+   AmountTooLow: nat64;
+   GenericError: record {
+                   error_code: nat64;
+                   error_message: text;
+                 };
+   InsufficientAllowance: record {allowance: nat64;};
+   InsufficientFunds: record {balance: nat64;};
+   MalformedAddress: text;
+   TemporarilyUnavailable: text;
  };
 type ResearchRecord = 
  record {
@@ -16,6 +74,15 @@ type ResearchRecord =
    domain: text;
    id: nat;
    title: text;
+ };
+type PendingUtxo = 
+ record {
+   confirmations: nat32;
+   outpoint: record {
+               txid: blob;
+               vout: nat32;
+             };
+   value: nat64;
  };
 type Member = 
  record {
@@ -70,6 +137,7 @@ service : {
           status: text;
           yes: nat;
         });
+  checkBtcDeposit: () -> (UpdateBalanceResult);
   /// Commit a verifiable skill to the Knowledge Commons.
   /// Any enrolled member can commit skills; evidence is stored as a content hash.
   /// Returns null if the member is not enrolled.
@@ -99,6 +167,8 @@ service : {
       message: text;
       ok: bool;
     });
+  executeCivicFork: (proposalId: nat, forkSignatories: nat, newWallet: 
+   text, newCodeBase: text) -> (text);
   /// File a new case and assign jurors via merit-weighted sortition.
   fileCase: (plaintiff: text, defendant: text, category: text, evidence:
    text) -> (record {
@@ -122,8 +192,11 @@ service : {
           current_reward: float64;
           id: nat;
         }) query;
+  getBtcDepositAddress: () -> (text);
+  getCkbtcBalance: () -> (nat);
   /// Return a member profile by name.
   getMember: (name: text) -> (opt Member) query;
+  initiateAppeal: (case_id: nat) -> (text);
   /// Return all bills (active, passed, rejected).
   listBills: () -> (vec Bill) query;
   /// Return all enrolled members.
@@ -152,4 +225,5 @@ service : {
                              message: text;
                              research_id: nat;
                            });
+  withdrawBtc: (btcAddress: text, amount: nat64) -> (RetrieveBtcResult);
 }

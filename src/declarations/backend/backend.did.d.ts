@@ -29,6 +29,11 @@ export interface Member {
   'joined_at' : bigint,
   'is_active' : boolean,
 }
+export interface PendingUtxo {
+  'confirmations' : number,
+  'value' : bigint,
+  'outpoint' : { 'txid' : Uint8Array | number[], 'vout' : number },
+}
 export interface ResearchRecord {
   'id' : bigint,
   'title' : string,
@@ -38,6 +43,15 @@ export interface ResearchRecord {
   'data_hash' : string,
   'abstract_text' : string,
 }
+export type RetrieveBtcError = { 'MalformedAddress' : string } |
+  { 'GenericError' : { 'error_message' : string, 'error_code' : bigint } } |
+  { 'TemporarilyUnavailable' : string } |
+  { 'InsufficientAllowance' : { 'allowance' : bigint } } |
+  { 'AlreadyProcessing' : null } |
+  { 'AmountTooLow' : bigint } |
+  { 'InsufficientFunds' : { 'balance' : bigint } };
+export type RetrieveBtcResult = { 'Ok' : { 'block_index' : bigint } } |
+  { 'Err' : RetrieveBtcError };
 export interface SkillCommit {
   'id' : bigint,
   'member' : string,
@@ -46,6 +60,35 @@ export interface SkillCommit {
   'endorsements' : Array<string>,
   'skill' : string,
 }
+export type UpdateBalanceError = {
+    'GenericError' : { 'error_message' : string, 'error_code' : bigint }
+  } |
+  { 'TemporarilyUnavailable' : string } |
+  { 'AlreadyProcessing' : null } |
+  {
+    'NoNewUtxos' : {
+      'required_confirmations' : number,
+      'pending_utxos' : [] | [Array<PendingUtxo>],
+      'current_confirmations' : [] | [number],
+    }
+  };
+export type UpdateBalanceResult = { 'Ok' : Array<UtxoStatus> } |
+  { 'Err' : UpdateBalanceError };
+export interface Utxo {
+  'height' : number,
+  'value' : bigint,
+  'outpoint' : { 'txid' : Uint8Array | number[], 'vout' : number },
+}
+export type UtxoStatus = { 'ValueTooSmall' : Utxo } |
+  { 'Tainted' : Utxo } |
+  {
+    'Minted' : {
+      'minted_amount' : bigint,
+      'block_index' : bigint,
+      'utxo' : Utxo,
+    }
+  } |
+  { 'Checked' : Utxo };
 export interface _SERVICE {
   /**
    * / Cast a verdict as a juror.
@@ -76,6 +119,7 @@ export interface _SERVICE {
       }
     ]
   >,
+  'checkBtcDeposit' : ActorMethod<[], UpdateBalanceResult>,
   /**
    * / Commit a verifiable skill to the Knowledge Commons.
    * / Any enrolled member can commit skills; evidence is stored as a content hash.
@@ -110,6 +154,7 @@ export interface _SERVICE {
     [string, string, string],
     { 'ok' : boolean, 'message' : string }
   >,
+  'executeCivicFork' : ActorMethod<[bigint, bigint, string, string], string>,
   /**
    * / File a new case and assign jurors via merit-weighted sortition.
    */
@@ -138,10 +183,13 @@ export interface _SERVICE {
     [bigint],
     [] | [{ 'id' : bigint, 'current_reward' : number }]
   >,
+  'getBtcDepositAddress' : ActorMethod<[], string>,
+  'getCkbtcBalance' : ActorMethod<[], bigint>,
   /**
    * / Return a member profile by name.
    */
   'getMember' : ActorMethod<[string], [] | [Member]>,
+  'initiateAppeal' : ActorMethod<[bigint], string>,
   /**
    * / Return all bills (active, passed, rejected).
    */
@@ -183,6 +231,7 @@ export interface _SERVICE {
     [string, string, string, string, string],
     { 'research_id' : bigint, 'message' : string }
   >,
+  'withdrawBtc' : ActorMethod<[string, bigint], RetrieveBtcResult>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

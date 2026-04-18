@@ -72,7 +72,11 @@ const createBackendActor = () => {
       proposeBill: unavailable('proposeBill'),
       castVote: unavailable('castVote'),
       listBills: unavailable('listBills'),
-      forkBill: unavailable('forkBill')
+      forkBill: unavailable('forkBill'),
+      getBtcDepositAddress: unavailable('getBtcDepositAddress'),
+      checkBtcDeposit: unavailable('checkBtcDeposit'),
+      getCkbtcBalance: unavailable('getCkbtcBalance'),
+      withdrawBtc: unavailable('withdrawBtc')
     };
   }
 
@@ -89,4 +93,5 @@ const createBackendActor = () => {
   });
 };
 
+console.log("Resolved canisterId:", canisterId, "process.env:", processEnv);
 export const backend = createBackendActor();

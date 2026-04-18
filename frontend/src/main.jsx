@@ -1046,6 +1046,7 @@ const App = () => {
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [osName, setOsName] = useState('[Insert Civic Common Name]');
   const [identity, setIdentity] = useState(null);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   useEffect(() => {
     initAuth().then(client => {
@@ -1053,7 +1054,25 @@ const App = () => {
         handleIdentity(client.getIdentity());
       }
     }).catch(console.error);
+
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    }
+  };
 
   const handleIdentity = async (id) => {
     setIdentity(id);
@@ -1091,7 +1110,16 @@ const App = () => {
             />
             <h1 className="text-xl font-bold tracking-tight text-white ml-2">OS</h1>
           </div>
-          <div>
+          <div className="flex items-center space-x-3">
+            {deferredPrompt && (
+              <button 
+                onClick={handleInstallClick} 
+                className="bg-yellow-400 text-blue-900 hover:bg-yellow-500 px-3 py-1 rounded shadow text-sm font-semibold whitespace-nowrap"
+                title="Install Civic OS App"
+              >
+                Install App
+              </button>
+            )}
             {!identity ? (
               <button 
                 onClick={handleLogin} 

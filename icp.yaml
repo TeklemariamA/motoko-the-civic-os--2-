@@ -16,8 +16,6 @@ canisters:
         source:
           - frontend/dist
 
-output_env_file: .env
-
 defaults:
   build:
     packtool: mops sources

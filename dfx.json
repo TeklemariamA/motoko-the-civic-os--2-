@@ -14,7 +14,6 @@
       "type": "assets"
     }
   },
-  "output_env_file": ".env",
   "defaults": {
     "build": {
       "packtool": "mops sources"

@@ -1,8 +1,11 @@
-import { AuthClient } from "@dfinity/auth-client";
-import { HttpAgent, Actor } from "@dfinity/agent";
+import { AuthClient } from "@icp-sdk/auth/client";
+import { HttpAgent, Actor } from "@icp-sdk/core/agent";
+import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env";
 import { idlFactory } from "./declarations/backend/service.did.js";
 
-// Same environmental config as index.js
+// Read the ic_env cookie
+const canisterEnv = safeGetCanisterEnv();
+
 const runtimeConfig = globalThis?.CIVIC_OS_CONFIG || {};
 const processEnv = typeof process !== 'undefined' ? process.env : {};
 const stripQuotes = (val) => (!val || typeof val !== 'string' ? val : val.replace(/^['"]|['"]$/g, ''));
@@ -14,22 +17,11 @@ const canisterId = stripQuotes(
   import.meta.env.CANISTER_ID_BACKEND || import.meta.env.CANISTER_ID || ''
 );
 
-const isLocal = typeof window !== 'undefined' ? window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.endsWith('.localhost') : false;
-
-const dfxNetwork = stripQuotes(
-  readRuntimeValue('DFX_NETWORK') || processEnv.DFX_NETWORK || import.meta.env?.DFX_NETWORK || (isLocal ? 'local' : 'ic')
-);
-
-// Host definition as in index.js
-const defaultHost = stripQuotes(
-  readRuntimeValue('IC_HOST') || (dfxNetwork === 'ic' ? 'https://icp-api.io' : 'http://localhost:4943')
-);
-
 export function getIdentityProviderUrl() {
+  const host = window.location.hostname;
+  const isLocal = host === "localhost" || host === "127.0.0.1" || host.endsWith(".localhost");
   if (isLocal) {
-    return `http://${process.env.CANISTER_ID_INTERNET_IDENTITY || 'id.ai'}.localhost:8000`; 
-    // In local development with ii: true, it deploys II to localhost. The skill says http://id.ai.localhost:8000
-    // Actually the `ii: true` deploys it automatically. Let's stick strictly to what the skill says:
+    return "http://id.ai.localhost:8000"; // Frontend canister ID alias for local II
   }
   return "https://id.ai";
 }
@@ -49,10 +41,9 @@ export async function initAuth() {
 export async function login() {
   if (!authClient) await initAuth();
   return new Promise((resolve, reject) => {
-    const isLocalHost = isLocal;
     authClient.login({
-      identityProvider: isLocalHost ? "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:8000" : "https://identity.ic0.app", // The skill actually says `http://id.ai.localhost:8000` but older auth clients may need the CAI. Let's use the CAI identity if using older icp.
-      maxTimeToLive: BigInt(8) * BigInt(3_600_000_000_000), // 8 hours
+      identityProvider: getIdentityProviderUrl(),
+      maxTimeToLive: BigInt(8) * BigInt(3_600_000_000_000), // 8 hours in nanoseconds
       onSuccess: () => {
         resolve(authClient.getIdentity());
       },
@@ -70,9 +61,11 @@ export function getIdentity() {
 }
 
 export async function createAuthenticatedActor(identity) {
-  const agent = new HttpAgent({ identity, host: defaultHost });
-  if (dfxNetwork !== 'ic') {
-    await agent.fetchRootKey().catch(console.error);
-  }
+  const agent = await HttpAgent.create({
+    identity,
+    host: window.location.origin,
+    rootKey: canisterEnv?.IC_ROOT_KEY,
+  });
+
   return Actor.createActor(idlFactory, { agent, canisterId });
 }
