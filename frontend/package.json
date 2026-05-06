@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "npm i --include=dev && dfx generate backend",
+    "prebuild": "npm i --include=dev",
     "build": "vite build",
     "dev": "vite",
     "preview": "vite preview --host 0.0.0.0 --port 5173",
