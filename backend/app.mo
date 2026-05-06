@@ -16,7 +16,7 @@ import Result "mo:base/Result";
 import Error "mo:base/Error";
 // Runtime not needed or should use assert false
 
-actor CivicOS {
+persistent actor CivicOS {
 
   // ---- DATA TYPES ----
 
