@@ -46,7 +46,7 @@ test.describe('CivicOS smoke', () => {
     await page.goto(base);
     await page.getByText('Legislature').click();
     await page.getByText('📜 Propose a Bill').click();
-    await page.getByPlaceholder('Title').fill(title);
+    await page.getByPlaceholder('Bill title', { exact: true }).fill(title);
     await page.getByPlaceholder('Category').fill('Test');
     await page.getByPlaceholder('Body').fill('This is an automated test bill.');
     await page.getByRole('button', { name: 'Propose Bill' }).click();
