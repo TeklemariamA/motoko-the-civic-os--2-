@@ -72,6 +72,7 @@ jobs:
         if: env.DRY_RUN == 'false'
         run: |
           echo "Deploying to Internet Computer mainnet..."
+          export DFX_WARNING=-mainnet_plaintext_identity
           dfx deploy --network ic
           echo "Deployment complete!"
 

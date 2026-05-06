@@ -33,14 +33,14 @@ jobs:
 
       - name: Install dfx (Internet Computer SDK)
         run: |
-          DFXVM_INIT_YES=true DFX_VERSION=0.24.3 sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
+          DFXVM_INIT_YES=true DFX_VERSION=0.30.2 sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
           echo "$HOME/.local/share/dfx/bin" >> $GITHUB_PATH
 
       - name: Verify dfx installation
         run: dfx --version
 
       - name: Install mops (Motoko package manager)
-        run: npm install -g ic-mops
+        run: npm install -g ic-mops@2.4.0
 
       - name: Install project dependencies
         run: npm ci
