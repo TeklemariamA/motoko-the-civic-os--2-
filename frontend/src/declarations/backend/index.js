@@ -43,7 +43,7 @@ const dfxNetwork = stripQuotes(
 );
 
 const defaultHost = stripQuotes(
-  readRuntimeValue('IC_HOST') || (dfxNetwork === 'ic' ? 'https://icp-api.io' : 'http://localhost:4943')
+  readRuntimeValue('IC_HOST') || (dfxNetwork === 'ic' ? 'https://icp-api.io' : 'http://127.0.0.1:4943')
 );
 
 const unavailable = (methodName) => async () => {
