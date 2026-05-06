@@ -65,8 +65,24 @@ jobs:
         node-version: 20.x
         cache: 'npm'
 
+    - name: Install dfx (Internet Computer SDK)
+      run: |
+        DFXVM_INIT_YES=true DFX_VERSION=0.30.2 sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
+        echo "$HOME/.local/share/dfx/bin" >> $GITHUB_PATH
+
+    - name: Install mops (Motoko package manager)
+      run: npm install -g ic-mops@2.4.0
+
     - name: Install project dependencies
       run: npm ci
+
+    - name: Install Motoko dependencies
+      run: mops install
+
+    - name: Start DFX and Deploy backend
+      run: |
+        dfx start --background
+        DFX_WARNING=-mainnet_plaintext_identity dfx deploy backend
 
     - name: Install Playwright (browsers + deps)
       run: npx playwright install --with-deps chromium
