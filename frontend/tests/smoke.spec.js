@@ -13,6 +13,7 @@ test.describe('CivicOS smoke', () => {
     const name = `e2e-${unique()}`;
 
     await page.goto(base);
+    await page.getByText('Membership').click();
     await page.getByText('🪪 Enroll as a Citizen').click();
     await page.getByPlaceholder('Name (unique handle)').fill(name);
     await page.getByPlaceholder('Bio').fill('Automated test user');
@@ -30,6 +31,7 @@ test.describe('CivicOS smoke', () => {
   test('create bounty and verify value lookup', async ({ page }) => {
     const base = process.env.BASE_URL || 'http://127.0.0.1:5173';
     await page.goto(base);
+    await page.getByText('Bounties').click();
     await page.getByText('Post a Bounty').click();
     await page.getByPlaceholder('Description').fill('Test bounty');
     await page.getByPlaceholder('Base reward (e.g. 100)').fill('10');
@@ -42,6 +44,7 @@ test.describe('CivicOS smoke', () => {
     const base = process.env.BASE_URL || 'http://127.0.0.1:5173';
     const title = `Bill ${unique()}`;
     await page.goto(base);
+    await page.getByText('Legislature').click();
     await page.getByText('📜 Propose a Bill').click();
     await page.getByPlaceholder('Title').fill(title);
     await page.getByPlaceholder('Category').fill('Test');
