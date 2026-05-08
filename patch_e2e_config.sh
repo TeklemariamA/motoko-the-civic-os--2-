@@ -1,0 +1,1 @@
+sed -i '/- name: Build frontend/i \    - name: Override runtime config for local e2e\n      run: |\n        echo "window.CIVIC_OS_CONFIG = { DFX_NETWORK: '\''local\'', IC_HOST: '\''http://127.0.0.1:4943'\'' };" > frontend/public/runtime-config.js\n' .github/workflows/node.js.yml

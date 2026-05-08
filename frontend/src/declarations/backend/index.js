@@ -3,6 +3,9 @@ import { idlFactory } from './service.did.js';
 
 const runtimeConfig = globalThis?.CIVIC_OS_CONFIG || {};
 const processEnv = typeof process !== 'undefined' ? process.env : {};
+const canisterIdBackend = typeof process !== 'undefined' && process.env ? process.env.CANISTER_ID_BACKEND : undefined;
+const canisterIdFallback = typeof process !== 'undefined' && process.env ? process.env.CANISTER_ID : undefined;
+
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 
 const stripQuotes = (value) => {
@@ -20,18 +23,13 @@ const readRuntimeValue = (key) => {
 
 const canisterId = stripQuotes(
   readRuntimeValue('CANISTER_ID_BACKEND')
-    ? readRuntimeValue('CANISTER_ID_BACKEND')
-    : (
-      readRuntimeValue('CANISTER_ID')
-        ? readRuntimeValue('CANISTER_ID')
-        : (
-          processEnv.CANISTER_ID_BACKEND
-          || processEnv.CANISTER_ID
-          || import.meta.env.CANISTER_ID_BACKEND
-          || import.meta.env.CANISTER_ID
-          || ''
-        )
-    )
+    || readRuntimeValue('CANISTER_ID')
+    || process.env.CANISTER_ID_BACKEND
+    || process.env.CANISTER_ID
+    || import.meta.env?.CANISTER_ID_BACKEND
+    || import.meta.env?.VITE_CANISTER_ID_BACKEND
+    || import.meta.env?.CANISTER_ID
+    || "ymwcy-eqaaa-aaaag-aywca-cai"
 );
 
 const isLocal = typeof window !== 'undefined' ? window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' : false;

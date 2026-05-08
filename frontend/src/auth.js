@@ -13,8 +13,9 @@ const readRuntimeValue = (key) => stripQuotes(runtimeConfig[key]);
 
 const canisterId = stripQuotes(
   readRuntimeValue('CANISTER_ID_BACKEND') || readRuntimeValue('CANISTER_ID') ||
-  processEnv.CANISTER_ID_BACKEND || processEnv.CANISTER_ID ||
-  import.meta.env.CANISTER_ID_BACKEND || import.meta.env.CANISTER_ID || ''
+  process.env.CANISTER_ID_BACKEND || process.env.CANISTER_ID ||
+  import.meta.env?.CANISTER_ID_BACKEND || import.meta.env?.VITE_CANISTER_ID_BACKEND || import.meta.env?.CANISTER_ID || 
+  "ymwcy-eqaaa-aaaag-aywca-cai"
 );
 
 export function getIdentityProviderUrl() {
