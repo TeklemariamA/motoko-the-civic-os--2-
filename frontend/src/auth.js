@@ -61,10 +61,20 @@ export function getIdentity() {
   return authClient ? authClient.getIdentity() : null;
 }
 
+const isLocal = typeof window !== 'undefined' ? window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.endsWith('.localhost') : false;
+
+const dfxNetwork = stripQuotes(
+  readRuntimeValue('DFX_NETWORK') || process.env.DFX_NETWORK || import.meta.env?.DFX_NETWORK || (isLocal ? 'local' : 'ic')
+);
+
+const defaultHost = stripQuotes(
+  readRuntimeValue('IC_HOST') || (dfxNetwork === 'ic' ? 'https://icp-api.io' : 'http://127.0.0.1:4943')
+);
+
 export async function createAuthenticatedActor(identity) {
   const agent = await HttpAgent.create({
     identity,
-    host: window.location.origin,
+    host: defaultHost,
     rootKey: canisterEnv?.IC_ROOT_KEY,
   });
 
