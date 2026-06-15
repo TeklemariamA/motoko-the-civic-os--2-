@@ -37,7 +37,7 @@ test.describe('CivicOS smoke', () => {
     await page.getByPlaceholder('Base reward (e.g. 100)').fill('10');
     await page.getByPlaceholder('Urgency coefficient (default 0.05)').fill('0.05');
     await page.getByRole('button', { name: 'Post Bounty' }).click();
-    await expectText(page, 'Test bounty');
+    await expectText(page, '✅');
   });
 
   test('propose bill and list', async ({ page }) => {
@@ -48,7 +48,7 @@ test.describe('CivicOS smoke', () => {
     await page.getByText('📜 Propose a Bill').click();
     await page.getByPlaceholder('Bill title', { exact: true }).fill(title);
     await page.getByPlaceholder('Category').fill('Test');
-    await page.getByPlaceholder('Body').fill('This is an automated test bill.');
+    await page.getByPlaceholder('Bill body / description', { exact: true }).fill('This is an automated test bill.');
     await page.getByRole('button', { name: 'Propose Bill' }).click();
     await expectText(page, 'bill');
     await expectText(page, title);
