@@ -1049,8 +1049,8 @@ const App = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   useEffect(() => {
-    initAuth().then(client => {
-      if (client?.isAuthenticated && client.isAuthenticated()) {
+    initAuth().then(async (client) => {
+      if (client?.isAuthenticated && await client.isAuthenticated()) {
         handleIdentity(client.getIdentity());
       }
     }).catch(console.error);
