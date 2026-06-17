@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
+import { backend } from 'declarations/backend';
 import botImg from '/bot.svg';
 import userImg from '/user.svg';
 import '/index.css';
@@ -43,14 +44,12 @@ const App = () => {
     if (!loginInput.trim()) return;
     setIsLoading(true);
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ username: loginInput })
-      });
-      const data = await response.json();
-      setUser(data);
-      alert(data.message);
+      // Call the Motoko backend canister natively
+      const response = await backend.login_or_register(loginInput);
+      // Ensure BigInt (Nat) merit is converted to string for React keys
+      response.merit = Number(response.merit);
+      setUser(response);
+      alert(response.message);
     } catch (e) {
       console.log(e);
       alert("Error logging in.");
@@ -67,16 +66,12 @@ const App = () => {
 
   const askAgent = async (messages) => {
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(messages)
-      });
-      const data = await response.json();
+      // Call native Motoko chat
+      const response = await backend.chat(messages);
       setChat((prevChat) => {
         const newChat = [...prevChat];
         newChat.pop();
-        newChat.push({ system: { content: data.response } });
+        newChat.push({ system: { content: response } });
         return newChat;
       });
     } catch (e) {
@@ -106,7 +101,15 @@ const App = () => {
     setIsLoading(true);
 
     const messagesToSend = chat.slice(1).concat(userMessage);
-    askAgent(messagesToSend);
+    // Format for Motoko schema
+    const formattedMessages = messagesToSend.map(m => {
+      const isUser = 'user' in m;
+      return {
+        role: isUser ? "user" : "system",
+        content: isUser ? m.user.content : m.system.content
+      };
+    });
+    askAgent(formattedMessages);
   };
 
   useEffect(() => {

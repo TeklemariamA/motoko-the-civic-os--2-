@@ -1,4 +1,17 @@
+type Username = text;
+type LoginResponse = 
+ record {
+   merit: nat;
+   message: text;
+   username: text;
+   wallet: text;
+ };
+type ChatMessage = 
+ record {
+   content: text;
+   role: text;
+ };
 service : {
-  chat: (messages: vec text) -> (text);
-  prompt: (prompt: text) -> (text);
+  chat: (messages: vec ChatMessage) -> (text);
+  login_or_register: (username: Username) -> (LoginResponse);
 }
