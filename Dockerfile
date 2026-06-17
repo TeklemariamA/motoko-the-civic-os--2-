@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy application files
-COPY backend/app.mo /app/app.py
+COPY backend/app.py /app/app.py
 
 # Install Python dependencies
 RUN pip install --no-cache-dir \

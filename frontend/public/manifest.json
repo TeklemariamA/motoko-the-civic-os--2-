@@ -1,0 +1,20 @@
+{
+  "short_name": "CivicOS",
+  "name": "CivicOS v2.0: The Purist Protocol",
+  "icons": [
+    {
+      "src": "/bot.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/bot.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#ffffff",
+  "background_color": "#f9fafb"
+}
