@@ -19,6 +19,7 @@ const App = () => {
   const chatBoxRef = useRef(null);
   
   const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isIOSDevice, setIsIOSDevice] = useState(false);
   
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
@@ -26,10 +27,25 @@ const App = () => {
       setDeferredPrompt(e);
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    const checkIOS = () => {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      return /iphone|ipad|ipod/.test(userAgent);
+    };
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    
+    if (checkIOS() && !isStandalone) {
+      setIsIOSDevice(true);
+    }
+
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
   const handleInstallClick = async () => {
+    if (isIOSDevice) {
+      alert("To install on iOS: tap the Share button (square with an up arrow) at the bottom of Safari, then scroll down and tap 'Add to Home Screen'.");
+      return;
+    }
     if (deferredPrompt) {
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
@@ -155,7 +171,7 @@ const App = () => {
           </div>
           <div className="flex items-center space-x-4">
             <div className="text-sm font-semibold text-blue-600">Merit: {user.merit}</div>
-            {deferredPrompt && (
+            {(deferredPrompt || isIOSDevice) && (
               <button
                 onClick={handleInstallClick}
                 className="text-xs rounded bg-blue-50 p-2 text-blue-600 border border-blue-200 hover:bg-blue-100 shadow-sm"
