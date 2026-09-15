@@ -107,6 +107,31 @@ To enable automatic deployment to IC mainnet:
 
 For more details, see the [workflow documentation](.github/WORKFLOWS.md).
 
+## Reliable Backend Upgrade On ICP Mainnet
+
+This project includes a direct backend upgrade script for the currently deployed canister.
+
+Default target canister:
+- `jip23-gaaaa-aaaak-qyzpq-cai`
+
+Run the upgrade:
+
+```bash
+npm run deploy:ic:backend
+```
+
+Optional override for a different backend canister:
+
+```bash
+CANISTER_ID_BACKEND_IC=<your-canister-id> npm run deploy:ic:backend
+```
+
+The script will:
+1. Verify the canister exists on `ic`
+2. Build `backend`
+3. Upgrade using `--wasm-memory-persistence replace`
+4. Print canister info for verification
+
 ## Security considerations and best practices
 
 If you base your application on this example, it is recommended that you familiarize yourself with and adhere to the [security best practices](https://internetcomputer.org/docs/building-apps/security/overview) for developing on ICP. This example may not implement all the best practices.
