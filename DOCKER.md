@@ -8,7 +8,7 @@ The application is containerized using Docker and can be pushed to the `civic-os
 
 ## Files
 
-- **Dockerfile**: Multi-stage Docker build for the FastAPI application
+- **Dockerfile**: Python 3.12 based Docker build for the FastAPI application
 - **.dockerignore**: Excludes unnecessary files from the Docker build context
 - **.github/workflows/docker-push.yml**: GitHub Actions workflow for automated builds and pushes
 
@@ -78,7 +78,7 @@ The CivicOS v2.0 API provides:
 
 ## Healthcheck
 
-The container includes a healthcheck that runs every 30 seconds to ensure the application is running.
+The container includes a healthcheck that runs every 30 seconds and validates `http://127.0.0.1:8000/docs`.
 
 ## Environment Variables
 

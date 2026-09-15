@@ -1,7 +1,6 @@
-# LLM Chatbot
+# CivicOS
 
-The LLM Chatbot example demonstrates how an ICP smart contract can be used to interact with a large language model (LLM) to generate text. The user can input a prompt, and the smart contract will use the LLM to generate a response.
-The response is then returned to the user, and the user can submit some follow-up prompts to continue the conversation.
+This project demonstrates an ICP-based CivicOS application with a Motoko canister backend, a React frontend, and an optional FastAPI service for container deployments.
 
 ## Deploying from ICP Ninja
 
@@ -69,7 +68,24 @@ docker run -d -p 8000:8000 civic-os:latest
 
 Access the API at http://localhost:8000/docs
 
+The Docker image uses Python 3.12 with FastAPI and Uvicorn.
+
 For automated deployment to civic-os-opensourcism.cloud, configure the `DOCKER_USERNAME` and `DOCKER_PASSWORD` secrets in your repository settings.
+
+## Backend Local Test Setup
+
+Install backend Python dependencies:
+
+```bash
+pip install -r backend/requirements.txt
+```
+
+Run backend tests:
+
+```bash
+cd backend
+python3 -m unittest -q
+```
 
 ### Setting up Mainnet Deployment
 

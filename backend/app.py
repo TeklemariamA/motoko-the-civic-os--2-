@@ -141,7 +141,7 @@ def file_case(plaintiff: str, defendant: str, category: str, evidence: str):
 
     # Simple Merit-Weighted Sortition:
     # Probability of being picked = user_merit / total_merit
-    weights = [db["users"][u].get("merit_score", 1) for u in potential_jurors]
+    weights = [db["users"][u].get("merit", 1) for u in potential_jurors]
     selected_jurors = random.choices(potential_jurors, weights=weights, k=3)
 
     new_case = Case(
@@ -179,12 +179,13 @@ def cast_verdict(case_id: int, juror_name: str, verdict: str):
         # Jurors who voted with the majority (the Schelling Point) earn Merit
         for juror, v in case.votes.items():
             if v == winner:
-                db["users"][juror]["merit_score"] += 5
+                db["users"][juror]["merit"] = db["users"][juror].get("merit", 0) + 5
             else:
-                db["users"][juror]["merit_score"] -= 2 # Penalize 'lazy' or dishonest voting
+                db["users"][juror]["merit"] = db["users"][juror].get("merit", 0) - 2 # Penalize 'lazy' or dishonest voting
 
         return {"verdict": winner, "message": "Case merged into the Social Ledger"}
 @app.post("/chat")
 def chat(messages: List[Dict]):
-    # Dummy chat response
+    if not isinstance(messages, list):
+        raise HTTPException(status_code=400, detail="messages must be a list")
     return {"response": "This is a dummy chat response from CivicOS backend."}
