@@ -11,7 +11,96 @@ type ChatMessage =
    content: text;
    role: text;
  };
+type TreasuryPartitionSummary =
+ record {
+   allocated: nat;
+   available: nat;
+   kind: text;
+   memo: text;
+   name: text;
+   released: nat;
+ };
+type TreasuryRelease =
+ record {
+   amount: nat;
+   created_at: int;
+   id: nat;
+   memo: text;
+   partition: text;
+   status: text;
+ };
+type TreasuryActionResponse =
+ record {
+   message: text;
+   partition: text;
+   release: opt TreasuryRelease;
+   summary: opt TreasuryPartitionSummary;
+ };
+type StewardStatus =
+ variant {
+   Pending;
+   Approved;
+   Executed;
+   Revoked;
+ };
+type MilestoneTranche =
+ record {
+   amount_e8s: nat64;
+   created_at: int;
+   id: nat;
+   partition: text;
+   recipient: principal;
+   required_telemetry_metric: text;
+   signatures: vec principal;
+   status: StewardStatus;
+   steward: principal;
+ };
+type StewardPolicySummary =
+ record {
+   governance_canister_id: principal;
+   required_signatures: nat;
+   telemetry_oracle_id: principal;
+ };
+type Result = variant { ok: text; err: text };
+type DisputeTier = variant { Five; Seven; Nine; };
+type DisputeVote = variant { Approve; Reject; };
+type DisputeStatus = variant { Open; Voting; Resolved; };
+type DisputeCase =
+ record {
+   appealStake: nat;
+   bountyId: nat;
+   claimant: principal;
+   id: nat;
+   jurors: vec principal;
+   status: DisputeStatus;
+   tier: DisputeTier;
+   votes: vec record { principal; DisputeVote; };
+ };
 service : {
+  appeal_dispute: (caseId: nat, nextTier: DisputeTier, newJurors: vec principal, stakeAmount: nat) -> (Result);
+  approve_tranche: (trancheId: nat) -> (text);
   chat: (messages: vec ChatMessage) -> (text);
+  check_for_deposits_and_mint_ckbtc: () -> (text);
+  configure_ckbtc_canister: (canisterId: principal) -> (text);
+  configure_steward_policy: (governanceCanisterId_: principal, telemetryOracleId_: principal, requiredSignatures: nat) -> (StewardPolicySummary);
+  create_dispute: (bountyId: nat, claimant: principal, tier: DisputeTier, selectedJurors: vec principal) -> (Result);
+  create_tranche: (recipient: principal, partitionName: text, amountE8s: nat64, requiredTelemetryMetric: text) -> (MilestoneTranche);
+  execute_tranche_release: (trancheId: nat) -> (Result);
+  getBtcDepositAddress: () -> (text);
+  is_ckbtc_canister_configured: () -> (bool) query;
+  get_active_stewards: () -> (vec principal) query;
+  get_commons_partitions: () -> (vec TreasuryPartitionSummary) query;
+  get_dispute_case: (caseId: nat) -> (Result) query;
+  get_dispute_verdict: (caseId: nat) -> (Result) query;
+  get_steward_policy: () -> (StewardPolicySummary) query;
+  get_tranches: () -> (vec MilestoneTranche) query;
+  get_treasury_releases: () -> (vec TreasuryRelease) query;
   login_or_register: (username: Username) -> (LoginResponse);
+  record_telemetry_metric: (steward: principal, metric: text, isMet: bool) -> (text);
+  register_commons_partition: (name: text, kind: text, allocated: nat, memo: text) -> (TreasuryPartitionSummary);
+  register_steward: (steward: principal) -> (text);
+  revoke_tranche: (trancheId: nat) -> (text);
+  release_treasury: (partitionName: text, amount: nat, memo: text) -> (TreasuryActionResponse);
+  submit_dispute_vote: (caseId: nat, vote: DisputeVote) -> (Result);
+  unregister_steward: (steward: principal) -> (text);
 }

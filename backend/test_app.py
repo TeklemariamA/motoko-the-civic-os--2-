@@ -73,6 +73,32 @@ class AppTests(unittest.TestCase):
         for juror in jury:
             self.assertEqual(db["users"][juror]["merit"], merit_before[juror] + 5)
 
+    def test_justice_jury_requires_unique_weighted_selection(self) -> None:
+        import app as app_module
+
+        original_choices = app_module.random.choices
+        try:
+            app_module.random.choices = lambda population, weights=None, k=1: ["alpha", "alpha", "alpha"]
+            db["users"]["alpha"] = {"merit": 40, "salt": "s1", "wallet": "0x1"}
+            db["users"]["beta"] = {"merit": 30, "salt": "s2", "wallet": "0x2"}
+            db["users"]["gamma"] = {"merit": 25, "salt": "s3", "wallet": "0x3"}
+
+            response = client.post(
+                "/justice/file_case",
+                params={
+                    "plaintiff": "elara",
+                    "defendant": "devon",
+                    "category": "Conduct",
+                    "evidence": "proof-data",
+                },
+            )
+            self.assertEqual(response.status_code, 200)
+            jury = response.json()["jury"]
+            self.assertEqual(len(jury), 3)
+            self.assertEqual(len(set(jury)), 3)
+        finally:
+            app_module.random.choices = original_choices
+
 
 if __name__ == "__main__":
     unittest.main()

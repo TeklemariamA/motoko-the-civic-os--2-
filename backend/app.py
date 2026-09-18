@@ -136,13 +136,24 @@ def file_case(plaintiff: str, defendant: str, category: str, evidence: str):
     case_id = len(db.get("cases", [])) + 1
 
     # 1. Merit-Weighted Juror Selection
-    # We select 3 jurors who have high merit in the relevant category
+    # We select 3 distinct jurors, weighted by merit, without replacement.
     potential_jurors = [u for u, data in db["users"].items() if u != plaintiff and u != defendant]
+    target_jurors = min(3, len(potential_jurors))
+    selected_jurors: List[str] = []
 
-    # Simple Merit-Weighted Sortition:
-    # Probability of being picked = user_merit / total_merit
-    weights = [db["users"][u].get("merit", 1) for u in potential_jurors]
-    selected_jurors = random.choices(potential_jurors, weights=weights, k=3)
+    while len(selected_jurors) < target_jurors and potential_jurors:
+        remaining_candidates = [u for u in potential_jurors if u not in selected_jurors]
+        if not remaining_candidates:
+            break
+
+        weights = [db["users"][u].get("merit", 1) for u in remaining_candidates]
+        chosen = random.choices(remaining_candidates, weights=weights, k=1)[0]
+
+        if chosen in selected_jurors:
+            chosen = max(remaining_candidates, key=lambda u: db["users"][u].get("merit", 1))
+
+        selected_jurors.append(chosen)
+        potential_jurors.remove(chosen)
 
     new_case = Case(
         id=case_id,
