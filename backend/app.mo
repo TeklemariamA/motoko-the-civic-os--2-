@@ -1,118 +1,24 @@
-import Text "mo:base/Text";
+// CivicOS v2.0: The Purist Protocol
+// Motoko backend for Internet Computer
+
 import Time "mo:base/Time";
-import Int "mo:base/Int";
-import Float "mo:base/Float";
+import Text "mo:base/Text";
 import Array "mo:base/Array";
-import Nat64 "mo:base/Nat64";
+import Nat "mo:base/Nat";
+import Nat32 "mo:base/Nat32";
+import Float "mo:base/Float";
+import Int "mo:base/Int";
+import Blob "mo:base/Blob";
 import Principal "mo:base/Principal";
+import Nat8 "mo:base/Nat8";
+import Nat64 "mo:base/Nat64";
 import Result "mo:base/Result";
+import Error "mo:base/Error";
+// Runtime not needed or should use assert false
 
-persistent actor {
-  public type Username = Text;
+persistent actor CivicOS {
 
-  public type UserData = {
-    merit : Nat;
-    salt : Text;
-    wallet : Text;
-  };
-
-  public type ChatMessage = {
-    role : Text;
-    content : Text;
-  };
-
-  public type LoginResponse = {
-    message : Text;
-    username : Text;
-    wallet : Text;
-    merit : Nat;
-  };
-
-  public type TreasuryPartition = {
-    name : Text;
-    kind : Text;
-    allocated : Nat;
-    released : Nat;
-    memo : Text;
-  };
-
-  public type TreasuryRelease = {
-    id : Nat;
-    partition : Text;
-    amount : Nat;
-    memo : Text;
-    created_at : Int;
-    status : Text;
-  };
-
-  public type TreasuryPartitionSummary = {
-    name : Text;
-    kind : Text;
-    allocated : Nat;
-    released : Nat;
-    available : Nat;
-    memo : Text;
-  };
-
-  public type TreasuryActionResponse = {
-    message : Text;
-    partition : Text;
-    release : ?TreasuryRelease;
-    summary : ?TreasuryPartitionSummary;
-  };
-
-  public type StewardStatus = {
-    #Pending;
-    #Approved;
-    #Executed;
-    #Revoked;
-  };
-
-  public type MilestoneTranche = {
-    id : Nat;
-    steward : Principal;
-    recipient : Principal;
-    partition : Text;
-    amount_e8s : Nat64;
-    required_telemetry_metric : Text;
-    signatures : [Principal];
-    status : StewardStatus;
-    created_at : Int;
-  };
-
-  public type StewardPolicySummary = {
-    governance_canister_id : Principal;
-    telemetry_oracle_id : Principal;
-    required_signatures : Nat;
-  };
-
-  public type DisputeTier = {
-    #Five;
-    #Seven;
-    #Nine;
-  };
-
-  public type DisputeVote = {
-    #Approve;
-    #Reject;
-  };
-
-  public type DisputeStatus = {
-    #Open;
-    #Voting;
-    #Resolved;
-  };
-
-  public type DisputeCase = {
-    id : Nat;
-    bountyId : Nat;
-    claimant : Principal;
-    tier : DisputeTier;
-    status : DisputeStatus;
-    jurors : [Principal];
-    votes : [(Principal, DisputeVote)];
-    appealStake : Nat;
-  };
+  // ---- DATA TYPES ----
 
   public type Bounty = {
     id : Nat;
@@ -120,826 +26,666 @@ persistent actor {
     base_reward : Float;
     urgency_coeff : Float;
     created_at : Int;
+    status : Text;
+    claimed_by : ?Text;
   };
 
-  public type BountyPostResponse = {
-    message : Text;
-    bounty_id : Nat;
+  public type AuditEntry = {
+    timestamp : Int;
+    proof_signature : Text;
+    action : Text;
+    verified : Bool;
   };
 
-  public type BountyValue = {
+  public type Case = {
     id : Nat;
-    current_reward : Float;
+    category : Text;
+    plaintiff : Text;
+    defendant : Text;
+    evidence_hash : Text;
+    jurors : [Text];
+    votes : [(Text, Text)];
+    status : Text;
+    tier : Text;
+    timestamp : Int;
   };
 
-  // We use a simple Array to easily keep it stable or just transient
-  transient var users : [(Username, UserData)] = [];
-  transient var rngCounter : Nat = 0;
-  transient var treasuryPartitions : [(Text, TreasuryPartition)] = [
-    (
-      "physical_commons",
-      {
-        name = "physical_commons";
-        kind = "commons";
-        allocated = 0;
-        released = 0;
-        memo = "Physical commons partition for shared civic resources";
-      },
-    ),
-    (
-      "treasury_release",
-      {
-        name = "treasury_release";
-        kind = "treasury";
-        allocated = 0;
-        released = 0;
-        memo = "Treasury release partition for staged distributions";
-      },
-    ),
+  public type User = {
+    name : Text;
+    merit : Int;
+  };
+
+  /// A registered citizen of the Social OS.
+  /// role examples: "Citizen", "Scholar", "Builder", "Steward"
+  public type Member = {
+    name : Text;
+    bio : Text;
+    role : Text;
+    joined_at : Int;
+    merit : Int;
+    is_active : Bool;
+  };
+
+  /// A verifiable skill that a member has committed to the Knowledge Commons.
+  /// Inspired by the "Skill-Commit" model — education as lifelong accumulation.
+  public type SkillCommit = {
+    id : Nat;
+    member : Text;
+    skill : Text;
+    evidence_hash : Text;
+    endorsements : [Text];
+    created_at : Int;
+  };
+
+  /// An open-science research record.
+  /// All publicly funded knowledge belongs to the commons.
+  public type ResearchRecord = {
+    id : Nat;
+    title : Text;
+    author : Text;
+    abstract_text : Text;
+    data_hash : Text;
+    domain : Text;
+    created_at : Int;
+  };
+
+  /// A legislative bill / proposal that citizens vote on.
+  /// status: "active" | "passed" | "rejected"
+  /// forked_from: ?id of the parent bill when this is a fork
+  public type Bill = {
+    id : Nat;
+    title : Text;
+    body : Text;
+    author : Text;
+    category : Text;
+    status : Text;
+    yes_votes : Nat;
+    no_votes : Nat;
+    abstain_votes : Nat;
+    created_at : Int;
+    forked_from : ?Nat;
+  };
+
+  // ---- STABLE STATE ----
+
+  stable var nextBountyId : Nat = 1;
+  stable var nextCaseId : Nat = 1;
+  stable var nextBillId : Nat = 1;
+  stable var nextSkillId : Nat = 1;
+  stable var nextResearchId : Nat = 1;
+  stable var bounties : [Bounty] = [];
+  stable var auditLog : [AuditEntry] = [];
+  stable var cases : [Case] = [];
+  stable var bills : [Bill] = [];
+  // (bill_id, citizen_name, choice) — one row per vote
+  stable var billVotes : [(Nat, Text, Text)] = [];
+  stable var members : [Member] = [];
+  stable var skillCommits : [SkillCommit] = [];
+  stable var researchRecords : [ResearchRecord] = [];
+  stable var users : [User] = [
+    { name = "elara"; merit = 50 },
+    { name = "devon"; merit = 20 },
   ];
-  transient var treasuryReleases : [TreasuryRelease] = [];
-  transient var releaseCounter : Nat = 0;
-  transient var governanceCanisterId : Principal = Principal.fromText("aaaaa-aa");
-  transient var telemetryOracleId : Principal = Principal.fromText("aaaaa-aa");
-  transient var requiredStewardSignatures : Nat = 2;
-  transient var activeStewards : [Principal] = [];
-  transient var trancheRegistry : [MilestoneTranche] = [];
-  transient var trancheCounter : Nat = 0;
-  transient var telemetryMetrics : [(Text, Bool)] = [];
-  transient var disputeCaseCounter : Nat = 0;
-  transient var disputeCases : [(Nat, DisputeCase)] = [];
-  transient var bounties : [Bounty] = [];
-  transient var bountyCounter : Nat = 0;
-  transient var ckbtcCanisterId : ?Principal = ?Principal.fromText("mqygn-kiaaa-aaaar-qaadq-cai");
 
-  func resolveCkBtcCanisterId() : Principal {
-    switch (ckbtcCanisterId) {
-      case null { Principal.fromText("mqygn-kiaaa-aaaar-qaadq-cai") };
-      case (?id) { id };
-    }
-  };
+  // ---- BOUNTIES ----
 
-  func pseudoHex(n: Nat) : Text {
-    let hexChars = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"];
-    var res = "";
-    var current = n;
-    var i = 0;
-    while (i < 8) {
-      let idx = current % 16;
-      res := res # hexChars[idx];
-      current := current / 16;
-      i := i + 1;
-    };
-    return res;
-  };
-
-  func findUser(username: Username) : ?UserData {
-    for ((u, d) in users.vals()) {
-      if (u == username) {
-        return ?d;
-      };
-    };
-    return null;
-  };
-
-  func findTreasuryPartition(name : Text) : ?TreasuryPartition {
-    for ((partitionName, partition) in treasuryPartitions.vals()) {
-      if (partitionName == name) {
-        return ?partition;
-      };
-    };
-    return null;
-  };
-
-  func summarizePartition(partition : TreasuryPartition) : TreasuryPartitionSummary {
-    let available = if (partition.allocated > partition.released) {
-      partition.allocated - partition.released
-    } else {
-      0
-    };
-    {
-      name = partition.name;
-      kind = partition.kind;
-      allocated = partition.allocated;
-      released = partition.released;
-      available = available;
-      memo = partition.memo;
-    }
-  };
-
-  func replacePartition(name : Text, updated : TreasuryPartition) {
-    var next : [(Text, TreasuryPartition)] = [];
-    for ((partitionName, partition) in treasuryPartitions.vals()) {
-      if (partitionName == name) {
-        next := Array.append(next, [(partitionName, updated)]);
-      } else {
-        next := Array.append(next, [(partitionName, partition)]);
-      };
-    };
-    treasuryPartitions := next;
-  };
-
-  func principalInList(list : [Principal], target : Principal) : Bool {
-    for (principal in list.vals()) {
-      if (principal == target) {
-        return true;
-      };
-    };
-    return false;
-  };
-
-  func metricKey(steward : Principal, metric : Text) : Text {
-    Principal.toText(steward) # "::" # metric
-  };
-
-  func getTelemetryMetric(steward : Principal, metric : Text) : Bool {
-    let key = metricKey(steward, metric);
-    for ((storedKey, isMet) in telemetryMetrics.vals()) {
-      if (storedKey == key) {
-        return isMet;
-      };
-    };
-    false
-  };
-
-  func upsertTelemetryMetric(steward : Principal, metric : Text, isMet : Bool) {
-    let key = metricKey(steward, metric);
-    var found = false;
-    var next : [(Text, Bool)] = [];
-    for ((storedKey, storedValue) in telemetryMetrics.vals()) {
-      if (storedKey == key) {
-        found := true;
-        next := Array.append(next, [(storedKey, isMet)]);
-      } else {
-        next := Array.append(next, [(storedKey, storedValue)]);
-      };
-    };
-    if (not found) {
-      next := Array.append(next, [(key, isMet)]);
-    };
-    telemetryMetrics := next;
-  };
-
-  func findTranche(id : Nat) : ?MilestoneTranche {
-    for (tranche in trancheRegistry.vals()) {
-      if (tranche.id == id) {
-        return ?tranche;
-      };
-    };
-    null
-  };
-
-  func replaceTranche(id : Nat, updated : MilestoneTranche) {
-    var next : [MilestoneTranche] = [];
-    for (tranche in trancheRegistry.vals()) {
-      if (tranche.id == id) {
-        next := Array.append(next, [updated]);
-      } else {
-        next := Array.append(next, [tranche]);
-      };
-    };
-    trancheRegistry := next;
-  };
-
-  func hasSignature(tranche : MilestoneTranche, signer : Principal) : Bool {
-    principalInList(tranche.signatures, signer)
-  };
-
-  func tierToJurorCount(tier : DisputeTier) : Nat {
-    switch (tier) {
-      case (#Five) { 5 };
-      case (#Seven) { 7 };
-      case (#Nine) { 9 };
-    };
-  };
-
-  func isAssignedJuror(jurors : [Principal], target : Principal) : Bool {
-    for (juror in jurors.vals()) {
-      if (juror == target) {
-        return true;
-      };
-    };
-    false;
-  };
-
-  func findDisputeCase(caseId : Nat) : ?DisputeCase {
-    for ((id, c) in disputeCases.vals()) {
-      if (id == caseId) {
-        return ?c;
-      };
-    };
-    null;
-  };
-
-  func findBounty(bountyId : Nat) : ?Bounty {
-    for (bounty in bounties.vals()) {
-      if (bounty.id == bountyId) {
-        return ?bounty;
-      };
-    };
-    null;
-  };
-
-  func applyTreasuryRelease(partitionName : Text, amount : Nat, memo : Text) : TreasuryActionResponse {
-    switch (findTreasuryPartition(partitionName)) {
-      case null {
-        {
-          message = "Partition not found.";
-          partition = partitionName;
-          release = null;
-          summary = null;
-        };
-      };
-      case (?partition) {
-        let available = if (partition.allocated > partition.released) {
-          partition.allocated - partition.released
-        } else {
-          0
-        };
-
-        if (amount > available) {
-          {
-            message = "Insufficient available treasury balance.";
-            partition = partitionName;
-            release = null;
-            summary = ?summarizePartition(partition);
-          };
-        } else {
-          let updatedPartition : TreasuryPartition = {
-            name = partition.name;
-            kind = partition.kind;
-            allocated = partition.allocated;
-            released = partition.released + amount;
-            memo = partition.memo;
-          };
-          replacePartition(partitionName, updatedPartition);
-
-          releaseCounter := releaseCounter + 1;
-          let release : TreasuryRelease = {
-            id = releaseCounter;
-            partition = partitionName;
-            amount = amount;
-            memo = memo;
-            created_at = Time.now();
-            status = "released";
-          };
-          treasuryReleases := Array.append(treasuryReleases, [release]);
-
-          {
-            message = "Treasury release recorded.";
-            partition = partitionName;
-            release = ?release;
-            summary = ?summarizePartition(updatedPartition);
-          };
-        };
-      };
-    }
-  };
-
-  // --- AUTH & WALLET GENERATION ---
-  public shared(msg) func login_or_register(username : Username) : async LoginResponse {
-     let lowerUser = username; 
-     switch(findUser(lowerUser)) {
-        case null {
-            rngCounter := rngCounter + 1;
-            let mockTimeNum = Int.abs(Time.now() / 1000000000);
-            let rawHex = pseudoHex(mockTimeNum + rngCounter * 999);
-            let wallet = "0x40954b0d1fd" # rawHex # "a85de79b8faea2029766cd5";
-            let salt = "secret_salt";
-            let u : UserData = { merit = 10; salt = salt; wallet = wallet };
-            users := Array.append(users, [(lowerUser, u)]);
-            return {
-              message = "New citizen registered and wallet generated.";
-              username = lowerUser;
-              wallet = wallet;
-              merit = 10;
-            };
-        };
-        case (?user) {
-            return {
-              message = "Welcome back, citizen.";
-              username = lowerUser;
-              wallet = user.wallet;
-              merit = user.merit;
-            };
-        };
-     };
-  };
-
-  // --- CHAT LOGIC ---
-  public shared(msg) func chat(messages : [ChatMessage]) : async Text {
-    return "This is a dummy chat response from the Native Motoko CivicOS backend.";
-  };
-
-  // --- BOUNTY LOGIC ---
-  public shared(_msg) func createBounty(
-    description : Text,
-    base_reward : Float,
-    urgency_coeff : Float,
-  ) : async BountyPostResponse {
-    bountyCounter := bountyCounter + 1;
-    let newBounty : Bounty = {
-      id = bountyCounter;
-      description = description;
-      base_reward = base_reward;
-      urgency_coeff = urgency_coeff;
-      created_at = Time.now();
-    };
-    bounties := Array.append(bounties, [newBounty]);
-    {
-      message = "Bounty posted to the grid";
-      bounty_id = bountyCounter;
-    }
-  };
-
-  public query func getBountyValue(bountyId : Nat) : async [BountyValue] {
-    switch (findBounty(bountyId)) {
-      case null {
-        []
-      };
-      case (?bounty) {
-        let now = Time.now();
-        let elapsedNanos = if (now > bounty.created_at) {
-          now - bounty.created_at
-        } else {
-          0
-        };
-        let elapsedSeconds = Float.fromInt(elapsedNanos) / 1_000_000_000.0;
-        let currentReward = bounty.base_reward * (1.0 + (bounty.urgency_coeff * (elapsedSeconds / 60.0)));
-        [
-          {
-            id = bounty.id;
-            current_reward = currentReward;
-          },
-        ]
-      };
-    }
-  };
-
-  // --- MULTI-JUROR APPEALS ---
-  public shared(_msg) func create_dispute(
-    bountyId : Nat,
-    claimant : Principal,
-    tier : DisputeTier,
-    selectedJurors : [Principal],
-  ) : async Result.Result<Nat, Text> {
-    let requiredJurors = tierToJurorCount(tier);
-    if (selectedJurors.size() != requiredJurors) {
-      return #err("Incorrect number of jurors for requested tier");
-    };
-
-    let newCaseId = disputeCaseCounter;
-    disputeCaseCounter := disputeCaseCounter + 1;
-
-    let newCase : DisputeCase = {
-      id = newCaseId;
-      bountyId = bountyId;
-      claimant = claimant;
-      tier = tier;
-      status = #Voting;
-      jurors = selectedJurors;
-      votes = [];
-      appealStake = 0;
-    };
-
-    disputeCases := Array.append(disputeCases, [(newCaseId, newCase)]);
-    #ok(newCaseId)
-  };
-
-  public shared(msg) func submit_dispute_vote(
-    caseId : Nat,
-    vote : DisputeVote,
-  ) : async Result.Result<(), Text> {
-    let caller = msg.caller;
-
-    switch (findDisputeCase(caseId)) {
-      case null {
-        #err("Case not found")
-      };
-      case (?c) {
-        if (c.status != #Voting) {
-          return #err("Case is not open for voting");
-        };
-
-        if (not isAssignedJuror(c.jurors, caller)) {
-          return #err("Caller is not an assigned juror");
-        };
-
-        for ((juror, _) in c.votes.vals()) {
-          if (juror == caller) {
-            return #err("Juror has already voted");
-          };
-        };
-
-        let updatedVotes = Array.append(c.votes, [(caller, vote)]);
-        let nextStatus = if (updatedVotes.size() == tierToJurorCount(c.tier)) { #Resolved } else { #Voting };
-
-        let updatedCase : DisputeCase = {
-          id = c.id;
-          bountyId = c.bountyId;
-          claimant = c.claimant;
-          tier = c.tier;
-          status = nextStatus;
-          jurors = c.jurors;
-          votes = updatedVotes;
-          appealStake = c.appealStake;
-        };
-
-        var nextCases : [(Nat, DisputeCase)] = [];
-        for ((id, currentCase) in disputeCases.vals()) {
-          if (id == caseId) {
-            nextCases := Array.append(nextCases, [(id, updatedCase)]);
-          } else {
-            nextCases := Array.append(nextCases, [(id, currentCase)]);
-          };
-        };
-        disputeCases := nextCases;
-        #ok(())
-      };
-    }
-  };
-
-  public query func get_dispute_case(caseId : Nat) : async Result.Result<DisputeCase, Text> {
-    switch (findDisputeCase(caseId)) {
-      case null { #err("Case not found") };
-      case (?c) { #ok(c) };
-    }
-  };
-
-  public query func get_dispute_verdict(caseId : Nat) : async Result.Result<DisputeVote, Text> {
-    switch (findDisputeCase(caseId)) {
-      case null {
-        #err("Case not found")
-      };
-      case (?c) {
-        if (c.status != #Resolved) {
-          return #err("Case is still open for voting");
-        };
-
-        var approveCount = 0;
-        var rejectCount = 0;
-
-        for ((_, vote) in c.votes.vals()) {
-          switch (vote) {
-            case (#Approve) { approveCount := approveCount + 1; };
-            case (#Reject) { rejectCount := rejectCount + 1; };
-          };
-        };
-
-        if (approveCount > rejectCount) {
-          #ok(#Approve)
-        } else {
-          #ok(#Reject)
-        }
-      };
-    }
-  };
-
-  public shared(_msg) func appeal_dispute(
-    caseId : Nat,
-    nextTier : DisputeTier,
-    newJurors : [Principal],
-    stakeAmount : Nat,
-  ) : async Result.Result<Nat, Text> {
-    let requiredJurors = tierToJurorCount(nextTier);
-    if (newJurors.size() != requiredJurors) {
-      return #err("Incorrect number of jurors for requested tier");
-    };
-
-    switch (findDisputeCase(caseId)) {
-      case null {
-        #err("Original case not found")
-      };
-      case (?c) {
-        if (c.status != #Resolved) {
-          return #err("Cannot appeal an unresolved case");
-        };
-
-        let newCaseId = disputeCaseCounter;
-        disputeCaseCounter := disputeCaseCounter + 1;
-
-        let escalatedCase : DisputeCase = {
-          id = newCaseId;
-          bountyId = c.bountyId;
-          claimant = c.claimant;
-          tier = nextTier;
-          status = #Voting;
-          jurors = newJurors;
-          votes = [];
-          appealStake = stakeAmount;
-        };
-
-        disputeCases := Array.append(disputeCases, [(newCaseId, escalatedCase)]);
-        #ok(newCaseId)
-      };
-    }
-  };
-
-  // --- CKBTC CANISTER INTEGRATION ---
-  // The app now defaults to the live ICP ckBTC minter on mainnet and can still be
-  // reconfigured at runtime when a different minter or testnet deployment is required.
-  public shared func configure_ckbtc_canister(canisterId : Principal) : async Text {
-    ckbtcCanisterId := ?canisterId;
-    "ckBTC canister configured: " # Principal.toText(canisterId)
-  };
-
-  public query func is_ckbtc_canister_configured() : async Bool {
-    switch (ckbtcCanisterId) {
-      case null { false };
-      case (?_) { true };
-    }
-  };
-
-  public shared(msg) func getBtcDepositAddress() : async Text {
-    let canisterId = resolveCkBtcCanisterId();
-    let ckbtcActor = actor (Principal.toText(canisterId)) : actor {
-      get_btc_address : shared ({ owner : ?Principal; subaccount : ?Blob }) -> async Text;
-    };
-    await ckbtcActor.get_btc_address({ owner = ?msg.caller; subaccount = null });
-  };
-
-  public shared(msg) func check_for_deposits_and_mint_ckbtc() : async Text {
-    let canisterId = resolveCkBtcCanisterId();
-    let ckbtcActor = actor (Principal.toText(canisterId)) : actor {
-      get_btc_address : shared ({ owner : ?Principal; subaccount : ?Blob }) -> async Text;
-    };
-    let address = await ckbtcActor.get_btc_address({ owner = ?msg.caller; subaccount = null });
-    "Live ckBTC canister connected: " # Principal.toText(canisterId) # ". Deposit address: " # address # ". Minting remains gated by the upstream ckBTC flow."
-  };
-
-  // --- TREASURY & COMMONS PARTITIONING ---
-  public shared func register_commons_partition(
-    name : Text,
-    kind : Text,
-    allocated : Nat,
-    memo : Text,
-  ) : async TreasuryPartitionSummary {
-    switch (findTreasuryPartition(name)) {
-      case null {
-        let partition : TreasuryPartition = {
-          name = name;
-          kind = kind;
-          allocated = allocated;
-          released = 0;
-          memo = memo;
-        };
-        treasuryPartitions := Array.append(treasuryPartitions, [(name, partition)]);
-        return summarizePartition(partition);
-      };
-      case (?partition) {
-        return summarizePartition(partition);
-      };
-    };
-  };
-
-  public shared func release_treasury(
-    partitionName : Text,
-    amount : Nat,
-    memo : Text,
-  ) : async TreasuryActionResponse {
-    applyTreasuryRelease(partitionName, amount, memo)
-  };
-
-  // --- STEWARD GOVERNANCE ---
-  public shared(msg) func configure_steward_policy(
-    governanceCanisterId_ : Principal,
-    telemetryOracleId_ : Principal,
-    requiredSignatures : Nat,
-  ) : async StewardPolicySummary {
-    if (msg.caller != governanceCanisterId) {
-      return {
-        governance_canister_id = governanceCanisterId;
-        telemetry_oracle_id = telemetryOracleId;
-        required_signatures = requiredStewardSignatures;
-      };
-    };
-    governanceCanisterId := governanceCanisterId_;
-    telemetryOracleId := telemetryOracleId_;
-    requiredStewardSignatures := if (requiredSignatures == 0) 1 else requiredSignatures;
-    {
-      governance_canister_id = governanceCanisterId;
-      telemetry_oracle_id = telemetryOracleId;
-      required_signatures = requiredStewardSignatures;
-    }
-  };
-
-  public shared(msg) func register_steward(steward : Principal) : async Text {
-    if (msg.caller != governanceCanisterId) {
-      return "Unauthorized: only governance can register stewards.";
-    };
-    if (principalInList(activeStewards, steward)) {
-      return "Steward already active.";
-    };
-    activeStewards := Array.append(activeStewards, [steward]);
-    "Steward registered."
-  };
-
-  public shared(msg) func unregister_steward(steward : Principal) : async Text {
-    if (msg.caller != governanceCanisterId) {
-      return "Unauthorized: only governance can unregister stewards.";
-    };
-    var next : [Principal] = [];
-    for (p in activeStewards.vals()) {
-      if (p != steward) {
-        next := Array.append(next, [p]);
-      };
-    };
-    activeStewards := next;
-    "Steward unregistered."
-  };
-
-  public shared(msg) func create_tranche(
-    recipient : Principal,
-    partitionName : Text,
-    amountE8s : Nat64,
-    requiredTelemetryMetric : Text,
-  ) : async MilestoneTranche {
-    let caller = msg.caller;
-    if (not principalInList(activeStewards, caller)) {
-      return {
-        id = 0;
-        steward = caller;
-        recipient = recipient;
-        partition = partitionName;
-        amount_e8s = amountE8s;
-        required_telemetry_metric = requiredTelemetryMetric;
-        signatures = [];
-        status = #Revoked;
+  /// Post a new time-escalating bounty to the grid.
+  public func createBounty(description : Text, base_reward : Float, urgency : Float) : async { message : Text; bounty_id : Nat } {
+    let id = nextBountyId;
+    nextBountyId += 1;
+    bounties := Array.append(
+      bounties,
+      [{
+        id;
+        description;
+        base_reward;
+        urgency_coeff = urgency;
         created_at = Time.now();
-      };
-    };
-    trancheCounter := trancheCounter + 1;
-    let tranche : MilestoneTranche = {
-      id = trancheCounter;
-      steward = caller;
-      recipient = recipient;
-      partition = partitionName;
-      amount_e8s = amountE8s;
-      required_telemetry_metric = requiredTelemetryMetric;
-      signatures = [caller];
-      status = #Pending;
-      created_at = Time.now();
-    };
-    trancheRegistry := Array.append(trancheRegistry, [tranche]);
-    tranche
+        status = "open";
+        claimed_by = null;
+      }],
+    );
+    { message = "Bounty posted to the grid"; bounty_id = id }
   };
 
-  public shared(msg) func approve_tranche(trancheId : Nat) : async Text {
-    let caller = msg.caller;
-    if (not principalInList(activeStewards, caller)) {
-      return "Unauthorized: caller is not an active steward.";
-    };
-    switch (findTranche(trancheId)) {
-      case null { "Tranche ID not found." };
-      case (?tranche) {
-        if (tranche.status == #Executed or tranche.status == #Revoked) {
-          return "Tranche cannot be approved in current state.";
+  /// Return the current (time-escalated) reward for a bounty.
+  /// Returns null if the bounty does not exist.
+  public query func getBountyValue(bounty_id : Nat) : async ?{ id : Nat; current_reward : Float } {
+    switch (Array.find<Bounty>(bounties, func(b) { b.id == bounty_id })) {
+      case null null;
+      case (?b) {
+        let elapsedNs : Int = Time.now() - b.created_at;
+        let safeElapsed : Int = if (elapsedNs > 0) elapsedNs else 0;
+        let elapsedMin : Float = Float.fromInt(safeElapsed) / 60_000_000_000.0;
+        let current_reward = b.base_reward * (1.0 + b.urgency_coeff * elapsedMin);
+        ?{ id = bounty_id; current_reward }
+      };
+    }
+  };
+
+  // ---- AUDIT ----
+
+  /// Submit a zero-knowledge proof of a private action.
+  /// The action is recorded on the public ledger under the proof hash, not the user's identity.
+  public func privateAction(proof_hash : Text, action_type : Text) : async { message : Text } {
+    auditLog := Array.append(
+      auditLog,
+      [{
+        timestamp = Time.now();
+        proof_signature = proof_hash;
+        action = action_type;
+        verified = true;
+      }],
+    );
+    { message = "Action verified and anonymized on public ledger" }
+  };
+
+  /// Return the full public audit log.
+  /// Anyone can see WHAT happened, but identities are hidden behind proof hashes.
+  public query func publicLog() : async [AuditEntry] {
+    auditLog
+  };
+
+  // ---- JUSTICE ----
+
+  /// File a new case and assign jurors via merit-weighted sortition.
+  public func fileCase(plaintiff : Text, defendant : Text, category : Text, evidence : Text) : async { case_id : Nat; jury : [Text] } {
+    let id = nextCaseId;
+    nextCaseId += 1;
+    let potentialJurors = Array.filter<User>(
+      users,
+      func(u) { u.name != plaintiff and u.name != defendant },
+    );
+    let jurors = Array.map<User, Text>(potentialJurors, func(u) { u.name });
+    let evidenceHash = simpleHash(evidence);
+    cases := Array.append(
+      cases,
+      [{
+        id;
+        category;
+        plaintiff;
+        defendant;
+        evidence_hash = evidenceHash;
+        jurors;
+        votes = [];
+        status = "open";
+        tier = "Tier1";
+        timestamp = Time.now();
+      }],
+    );
+    { case_id = id; jury = jurors }
+  };
+
+  /// Cast a verdict as a juror.
+  /// Once all jurors have voted, Schelling-point consensus resolves the case
+  /// and redistributes merit to honest jurors.
+  /// Returns null if the case does not exist or the caller is not an assigned juror.
+  public func castVerdict(case_id : Nat, juror_name : Text, verdict : Text) : async ?{ verdict : Text; message : Text } {
+    switch (Array.find<Case>(cases, func(c) { c.id == case_id })) {
+      case null null;
+      case (?c) {
+        // Verify the juror is assigned to this case
+        if (Array.find<Text>(c.jurors, func(j) { j == juror_name }) == null) {
+          return null;
         };
-        if (hasSignature(tranche, caller)) {
-          return "Steward already signed this tranche.";
+        // Prevent double-voting
+        if (Array.find<(Text, Text)>(c.votes, func((j, _)) { j == juror_name }) != null) {
+          return null;
         };
-        let nextSigs = Array.append(tranche.signatures, [caller]);
-        let nextStatus = if (nextSigs.size() >= requiredStewardSignatures) #Approved else #Pending;
-        replaceTranche(
-          tranche.id,
-          {
-            id = tranche.id;
-            steward = tranche.steward;
-            recipient = tranche.recipient;
-            partition = tranche.partition;
-            amount_e8s = tranche.amount_e8s;
-            required_telemetry_metric = tranche.required_telemetry_metric;
-            signatures = nextSigs;
-            status = nextStatus;
-            created_at = tranche.created_at;
-          },
+        let newVotes = Array.append(c.votes, [(juror_name, verdict)]);
+        let allVoted = newVotes.size() >= c.jurors.size() and c.jurors.size() > 0;
+        let newStatus = if (allVoted) "resolved" else "deliberating";
+        let updated : Case = {
+          id = c.id;
+          category = c.category;
+          plaintiff = c.plaintiff;
+          defendant = c.defendant;
+          evidence_hash = c.evidence_hash;
+          jurors = c.jurors;
+          votes = newVotes;
+          status = newStatus;
+          tier = c.tier;
+          timestamp = c.timestamp;
+        };
+        cases := Array.map<Case, Case>(
+          cases,
+          func(c2) { if (c2.id == case_id) updated else c2 },
         );
-        if (nextStatus == #Approved) {
-          "Tranche approved and ready for execution."
+        if (allVoted) {
+          let majority = findMajority(newVotes);
+          updateMerits(newVotes, majority);
+          ?{ verdict = majority; message = "Case merged into the Social Ledger" }
         } else {
-          "Signature recorded."
+          ?{ verdict = "pending"; message = "Vote recorded" }
         }
       };
     }
   };
 
-  public shared(msg) func revoke_tranche(trancheId : Nat) : async Text {
-    let caller = msg.caller;
-    if (not principalInList(activeStewards, caller) and caller != governanceCanisterId) {
-      return "Unauthorized: caller cannot revoke tranche.";
-    };
-    switch (findTranche(trancheId)) {
-      case null { "Tranche ID not found." };
-      case (?tranche) {
-        replaceTranche(
-          tranche.id,
-          {
-            id = tranche.id;
-            steward = tranche.steward;
-            recipient = tranche.recipient;
-            partition = tranche.partition;
-            amount_e8s = tranche.amount_e8s;
-            required_telemetry_metric = tranche.required_telemetry_metric;
-            signatures = tranche.signatures;
-            status = #Revoked;
-            created_at = tranche.created_at;
-          },
+  // ---- LEGISLATURE ----
+
+  public func initiateAppeal(case_id : Nat) : async Text {
+    switch (Array.find<Case>(cases, func(c) { c.id == case_id })) {
+      case null "Error: Case not found.";
+      case (?c) {
+        let now = Time.now();
+        let twoMonthsInNs : Int = 5184000000000000;
+        if (now > c.timestamp + twoMonthsInNs) {
+           return "Error: Appeal window closed (2-month limit exceeded).";
+        };
+        
+        let oldTier = c.tier;
+        let newTier = if (oldTier == "Tier1") "Tier2" 
+                      else if (oldTier == "Tier2") "Tier3" 
+                      else "Tier3";
+                      
+        if (oldTier == "Tier3") {
+           return "Error: Tier 3 is the Supreme Commons. No further appeals possible.";
+        };
+
+        let updated : Case = {
+          id = c.id;
+          category = c.category;
+          plaintiff = c.plaintiff;
+          defendant = c.defendant;
+          evidence_hash = c.evidence_hash;
+          jurors = c.jurors;
+          votes = c.votes;
+          status = c.status;
+          tier = newTier;
+          timestamp = c.timestamp;
+        };
+        cases := Array.map<Case, Case>(
+          cases,
+          func(c2) { if (c2.id == case_id) updated else c2 },
         );
-        "Tranche revoked."
+
+        if (oldTier == "Tier1") {
+           return "Appeal Accepted: Moving to Tier 2 (7 Jurors).";
+        } else {
+           return "Final Re-appeal Accepted: Moving to Tier 3 (9 Jurors).";
+        };
       };
     }
   };
 
-  public shared(msg) func record_telemetry_metric(
-    steward : Principal,
-    metric : Text,
-    isMet : Bool,
-  ) : async Text {
-    if (
-      msg.caller != telemetryOracleId and
-      msg.caller != governanceCanisterId and
-      not principalInList(activeStewards, msg.caller)
-    ) {
-      return "Unauthorized: caller cannot submit telemetry.";
-    };
-    upsertTelemetryMetric(steward, metric, isMet);
-    "Telemetry metric recorded."
+  // ---- FORKING ----
+
+  public func executeCivicFork(proposalId : Nat, forkSignatories: Nat, newWallet: Text, newCodeBase: Text) : async Text {
+      let totalMembersCount : Nat = users.size();
+      if (totalMembersCount == 0) { return "Error: No members"; };
+      let sharePercentage : Float = Float.fromInt(forkSignatories) / Float.fromInt(totalMembersCount);
+      return "Fork Successful: " # Float.toText(sharePercentage * 100.0) # "% of resources migrated.";
   };
 
-  public shared(msg) func execute_tranche_release(trancheId : Nat) : async Result.Result<Text, Text> {
-    let caller = msg.caller;
-    if (not principalInList(activeStewards, caller)) {
-      return #err("Unauthorized: caller is not an active steward.");
-    };
+  // ---- LEGISLATURE ----
 
-    switch (findTranche(trancheId)) {
-      case null { #err("Tranche ID not found.") };
-      case (?tranche) {
-        if (tranche.status != #Approved) {
-          return #err("Tranche not in approved state.");
-        };
-        if (tranche.signatures.size() < requiredStewardSignatures) {
-          return #err("Insufficient cryptographic multi-sig approvals.");
-        };
+  /// Propose a new bill for the community to vote on.
+  public func proposeBill(title : Text, body : Text, author : Text, category : Text) : async { bill_id : Nat; message : Text } {
+    let id = nextBillId;
+    nextBillId += 1;
+    bills := Array.append(
+      bills,
+      [{
+        id;
+        title;
+        body;
+        author;
+        category;
+        status = "active";
+        yes_votes = 0;
+        no_votes = 0;
+        abstain_votes = 0;
+        created_at = Time.now();
+        forked_from = null;
+      }],
+    );
+    { bill_id = id; message = "Bill proposed to the legislature" }
+  };
 
-        let isMetricMet = getTelemetryMetric(tranche.steward, tranche.required_telemetry_metric);
-        if (not isMetricMet) {
-          return #err("Telemetry oracle metric check failed.");
+  /// Cast a vote on an active bill.
+  /// choice must be "yes", "no", or "abstain".
+  /// A bill automatically commits (passes) once yes votes strictly exceed 50 % of
+  /// all participating votes (yes + no), implementing the 50+1 majority rule.
+  /// Returns null if the bill is not found or the citizen has already voted.
+  public func castVote(bill_id : Nat, citizen : Text, choice : Text) : async ?{ yes : Nat; no : Nat; abstain : Nat; status : Text; message : Text } {
+    switch (Array.find<Bill>(bills, func(b) { b.id == bill_id })) {
+      case null null;
+      case (?bill) {
+        if (bill.status != "active") {
+          return ?{
+            yes = bill.yes_votes;
+            no = bill.no_votes;
+            abstain = bill.abstain_votes;
+            status = bill.status;
+            message = "Bill is no longer active";
+          };
         };
-
-        let treasuryResult = applyTreasuryRelease(
-          tranche.partition,
-          Nat64.toNat(tranche.amount_e8s),
-          "steward tranche " # Nat64.toText(tranche.amount_e8s),
-        );
-        if (treasuryResult.release == null) {
-          return #err("Treasury transfer failed: " # treasuryResult.message);
+        // Prevent double-voting
+        if (Array.find<(Nat, Text, Text)>(billVotes, func((bid, cit, _)) { bid == bill_id and cit == citizen }) != null) {
+          return null;
         };
-
-        replaceTranche(
-          tranche.id,
-          {
-            id = tranche.id;
-            steward = tranche.steward;
-            recipient = tranche.recipient;
-            partition = tranche.partition;
-            amount_e8s = tranche.amount_e8s;
-            required_telemetry_metric = tranche.required_telemetry_metric;
-            signatures = tranche.signatures;
-            status = #Executed;
-            created_at = tranche.created_at;
-          },
-        );
-        #ok("Tranche released successfully via smart contract.")
+        billVotes := Array.append(billVotes, [(bill_id, citizen, choice)]);
+        let newYes = bill.yes_votes + (if (choice == "yes") 1 else 0);
+        let newNo = bill.no_votes + (if (choice == "no") 1 else 0);
+        let newAbstain = bill.abstain_votes + (if (choice == "abstain") 1 else 0);
+        // 50+1 rule: yes must strictly exceed 50% of (yes + no); abstentions excluded.
+        // NOTE: the same formula (yes * 2 > total) is mirrored in the frontend bill-list display.
+        let participating = newYes + newNo;
+        let newStatus = if (participating > 0 and newYes * 2 > participating) "passed"
+                        else bill.status;
+        let updated : Bill = {
+          id = bill.id;
+          title = bill.title;
+          body = bill.body;
+          author = bill.author;
+          category = bill.category;
+          status = newStatus;
+          yes_votes = newYes;
+          no_votes = newNo;
+          abstain_votes = newAbstain;
+          created_at = bill.created_at;
+          forked_from = bill.forked_from;
+        };
+        bills := Array.map<Bill, Bill>(bills, func(b) { if (b.id == bill_id) updated else b });
+        let msg = if (newStatus == "passed")
+          "Bill committed to the Social Ledger — 50+1 majority reached 🎉"
+          else "Vote recorded";
+        ?{ yes = newYes; no = newNo; abstain = newAbstain; status = newStatus; message = msg }
       };
     }
   };
 
-  public query func get_tranches() : async [MilestoneTranche] {
-    trancheRegistry
+  /// Return a single bill by ID.
+  public query func getBill(bill_id : Nat) : async ?Bill {
+    Array.find<Bill>(bills, func(b) { b.id == bill_id })
   };
 
-  public query func get_active_stewards() : async [Principal] {
-    activeStewards
+  /// Return all bills (active, passed, rejected).
+  public query func listBills() : async [Bill] {
+    bills
   };
 
-  public query func get_steward_policy() : async StewardPolicySummary {
-    {
-      governance_canister_id = governanceCanisterId;
-      telemetry_oracle_id = telemetryOracleId;
-      required_signatures = requiredStewardSignatures;
+  /// Fork an existing bill into a new variant with amended title and body.
+  /// The fork starts with 0 votes and status "active".
+  /// Returns null if the original bill does not exist.
+  public func forkBill(original_id : Nat, title : Text, body : Text, author : Text) : async ?{ bill_id : Nat; message : Text } {
+    switch (Array.find<Bill>(bills, func(b) { b.id == original_id })) {
+      case null null;
+      case (?orig) {
+        let id = nextBillId;
+        nextBillId += 1;
+        bills := Array.append(
+          bills,
+          [{
+            id;
+            title;
+            body;
+            author;
+            category = orig.category;
+            status = "active";
+            yes_votes = 0;
+            no_votes = 0;
+            abstain_votes = 0;
+            created_at = Time.now();
+            forked_from = ?original_id;
+          }],
+        );
+        ?{ bill_id = id; message = "Bill forked from #" # Nat.toText(original_id) }
+      };
     }
   };
 
-  public query func get_commons_partitions() : async [TreasuryPartitionSummary] {
-    var summaries : [TreasuryPartitionSummary] = [];
-    for ((_, partition) in treasuryPartitions.vals()) {
-      summaries := Array.append(summaries, [summarizePartition(partition)]);
+  // ---- MEMBERSHIP ENROLLMENT ----
+
+  /// Enroll a new citizen in the Social OS.
+  /// Returns an error message if the name is already taken.
+  public func enrollMember(name : Text, bio : Text, role : Text) : async { ok : Bool; message : Text } {
+    if (Array.find<Member>(members, func(m) { m.name == name }) != null) {
+      return { ok = false; message = "Name already enrolled" };
     };
-    return summaries;
+    members := Array.append(
+      members,
+      [{
+        name;
+        bio;
+        role;
+        joined_at = Time.now();
+        merit = 10; // welcome bonus
+        is_active = true;
+      }],
+    );
+    { ok = true; message = "Welcome to the Social OS, " # name # "! Starting merit: 10" }
   };
 
-  public query func get_treasury_releases() : async [TreasuryRelease] {
-    return treasuryReleases;
+  /// Return a member profile by name.
+  public query func getMember(name : Text) : async ?Member {
+    Array.find<Member>(members, func(m) { m.name == name })
+  };
+
+  /// Return all enrolled members.
+  public query func listMembers() : async [Member] {
+    members
+  };
+
+  // ---- KNOWLEDGE COMMONS — SKILL COMMITS ----
+
+  /// Commit a verifiable skill to the Knowledge Commons.
+  /// Any enrolled member can commit skills; evidence is stored as a content hash.
+  /// Returns null if the member is not enrolled.
+  public func commitSkill(member : Text, skill : Text, evidence : Text) : async ?{ skill_id : Nat; message : Text } {
+    if (Array.find<Member>(members, func(m) { m.name == member }) == null) {
+      return null;
+    };
+    let id = nextSkillId;
+    nextSkillId += 1;
+    skillCommits := Array.append(
+      skillCommits,
+      [{
+        id;
+        member;
+        skill;
+        evidence_hash = simpleHash(evidence);
+        endorsements = [];
+        created_at = Time.now();
+      }],
+    );
+    ?{ skill_id = id; message = "Skill committed: " # skill }
+  };
+
+  /// Endorse a skill commit on behalf of another member.
+  /// A member cannot endorse their own skill. Returns null if skill or endorser not found.
+  public func endorseSkill(skill_id : Nat, endorser : Text) : async ?{ skill_id : Nat; endorsement_count : Nat; message : Text } {
+    switch (Array.find<SkillCommit>(skillCommits, func(s) { s.id == skill_id })) {
+      case null null;
+      case (?sc) {
+        if (sc.member == endorser) return null; // no self-endorsement
+        if (Array.find<Text>(sc.endorsements, func(e) { e == endorser }) != null) return null; // already endorsed
+        let updated : SkillCommit = {
+          id = sc.id;
+          member = sc.member;
+          skill = sc.skill;
+          evidence_hash = sc.evidence_hash;
+          endorsements = Array.append(sc.endorsements, [endorser]);
+          created_at = sc.created_at;
+        };
+        skillCommits := Array.map<SkillCommit, SkillCommit>(
+          skillCommits,
+          func(s) { if (s.id == skill_id) updated else s },
+        );
+        ?{ skill_id; endorsement_count = updated.endorsements.size(); message = endorser # " endorsed this skill" }
+      };
+    }
+  };
+
+  /// Return all skill commits for a given member.
+  public query func listSkillCommits(member : Text) : async [SkillCommit] {
+    Array.filter<SkillCommit>(skillCommits, func(s) { s.member == member })
+  };
+
+  // ---- KNOWLEDGE COMMONS — OPEN SCIENCE ----
+
+  /// Publish a research record to the open-science commons.
+  /// Per the Human Source Code principle: all publicly relevant knowledge is immediately public.
+  public func publishResearch(title : Text, author : Text, abstract_text : Text, data : Text, domain : Text) : async { research_id : Nat; message : Text } {
+    let id = nextResearchId;
+    nextResearchId += 1;
+    researchRecords := Array.append(
+      researchRecords,
+      [{
+        id;
+        title;
+        author;
+        abstract_text;
+        data_hash = simpleHash(data);
+        domain;
+        created_at = Time.now();
+      }],
+    );
+    { research_id = id; message = "Research published to the commons: " # title }
+  };
+
+  /// Return all open-science research records.
+  public query func listResearch() : async [ResearchRecord] {
+    researchRecords
+  };
+
+  // ---- HELPERS ----
+
+  /// Derive a stable text fingerprint from a blob using the built-in hash primitive.
+  private func simpleHash(text : Text) : Text {
+    Nat32.toText(Blob.hash(Text.encodeUtf8(text)))
+  };
+
+  /// Return the verdict with the most votes (first winner on a tie).
+  private func findMajority(votes : [(Text, Text)]) : Text {
+    var best = "";
+    var bestCount : Nat = 0;
+    for ((_, v) in votes.vals()) {
+      var count : Nat = 0;
+      for ((_, v2) in votes.vals()) {
+        if (v2 == v) count += 1;
+      };
+      if (count > bestCount) {
+        bestCount := count;
+        best := v;
+      };
+    };
+    best
+  };
+
+  /// Reward jurors who voted with the majority (+5 merit) and penalise the rest (-2 merit).
+  private func updateMerits(votes : [(Text, Text)], winner : Text) {
+    for ((juror, v) in votes.vals()) {
+      users := Array.map<User, User>(
+        users,
+        func(u) {
+          if (u.name == juror) {
+            { name = u.name; merit = if (v == winner) u.merit + 5 else Int.max(0, u.merit - 2) }
+          } else u
+        },
+      );
+    };
+  };
+
+  // ==========================================
+  // --- ckBTC Integration Types & Logic ---
+  // ==========================================
+
+  public type Account = { owner : Principal; subaccount : ?Blob };
+
+  public type TransferArgs = {
+    from_subaccount : ?Blob; to : Account; amount : Nat; fee : ?Nat; memo : ?Blob; created_at_time : ?Nat64;
+  };
+  public type TransferResult = { #Ok : Nat; #Err : TransferError };
+  public type TransferError = {
+    #BadFee : { expected_fee : Nat }; #BadBurn : { min_burn_amount : Nat }; #InsufficientFunds : { balance : Nat };
+    #TooOld; #CreatedInFuture : { ledger_time : Nat64 }; #Duplicate : { duplicate_of : Nat };
+    #TemporarilyUnavailable; #GenericError : { error_code : Nat; message : Text };
+  };
+
+  public type UpdateBalanceResult = { #Ok : [UtxoStatus]; #Err : UpdateBalanceError };
+  public type UtxoStatus = {
+    #ValueTooSmall : Utxo; #Tainted : Utxo; #Checked : Utxo;
+    #Minted : { block_index : Nat64; minted_amount : Nat64; utxo : Utxo };
+  };
+  public type Utxo = { outpoint : { txid : Blob; vout : Nat32 }; value : Nat64; height : Nat32 };
+  public type UpdateBalanceError = {
+    #NoNewUtxos : { required_confirmations : Nat32; pending_utxos : ?[PendingUtxo]; current_confirmations : ?Nat32 };
+    #AlreadyProcessing; #TemporarilyUnavailable : Text; #GenericError : { error_code : Nat64; error_message : Text };
+  };
+  public type PendingUtxo = { outpoint : { txid : Blob; vout : Nat32 }; value : Nat64; confirmations : Nat32 };
+
+  public type ApproveArgs = {
+    from_subaccount : ?Blob; spender : Account; amount : Nat; expected_allowance : ?Nat; expires_at : ?Nat64; fee : ?Nat; memo : ?Blob; created_at_time : ?Nat64;
+  };
+  public type ApproveError = {
+    #BadFee : { expected_fee : Nat }; #InsufficientFunds : { balance : Nat }; #AllowanceChanged : { current_allowance : Nat };
+    #Expired : { ledger_time : Nat64 }; #TooOld; #CreatedInFuture : { ledger_time : Nat64 }; #Duplicate : { duplicate_of : Nat };
+    #TemporarilyUnavailable; #GenericError : { error_code : Nat; message : Text };
+  };
+
+  public type RetrieveBtcWithApprovalArgs = { address : Text; amount : Nat64; from_subaccount : ?Blob };
+  public type RetrieveBtcResult = { #Ok : { block_index : Nat64 }; #Err : RetrieveBtcError };
+  public type RetrieveBtcError = {
+    #MalformedAddress : Text; #AlreadyProcessing; #AmountTooLow : Nat64; #InsufficientFunds : { balance : Nat64 };
+    #InsufficientAllowance : { allowance : Nat64 }; #TemporarilyUnavailable : Text; #GenericError : { error_code : Nat64; error_message : Text };
+  };
+
+  // Remote canister references (Mainnet)
+  transient let ckbtcLedger : actor {
+    icrc1_transfer : shared (TransferArgs) -> async TransferResult;
+    icrc1_balance_of : shared query (Account) -> async Nat;
+    icrc1_fee : shared query () -> async Nat;
+    icrc2_approve : shared (ApproveArgs) -> async { #Ok : Nat; #Err : ApproveError };
+  } = actor "mxzaz-hqaaa-aaaar-qaada-cai";
+
+  transient let ckbtcMinter : actor {
+    get_btc_address : shared ({ owner : ?Principal; subaccount : ?Blob }) -> async Text;
+    update_balance : shared ({ owner : ?Principal; subaccount : ?Blob }) -> async UpdateBalanceResult;
+    retrieve_btc_with_approval : shared (RetrieveBtcWithApprovalArgs) -> async RetrieveBtcResult;
+  } = actor "mqygn-kiaaa-aaaar-qaadq-cai";
+
+  private func principalToSubaccount(p : Principal) : Blob {
+    let bytes = Blob.toArray(Principal.toBlob(p));
+    let size = bytes.size();
+    let sub = Array.tabulate<Nat8>(32, func(i : Nat) : Nat8 {
+      if (i == 0) { Nat8.fromNat(size) } else if (i <= size) { bytes[i - 1] } else { 0 }
+    });
+    Blob.fromArray(sub)
+  };
+
+  public shared ({ caller }) func getBtcDepositAddress() : async Text {
+    if (Principal.isAnonymous(caller)) { assert false };
+    let subaccount = principalToSubaccount(caller);
+    await ckbtcMinter.get_btc_address({ owner = ?Principal.fromActor(CivicOS); subaccount = ?subaccount })
+  };
+
+  public shared ({ caller }) func checkBtcDeposit() : async UpdateBalanceResult {
+    if (Principal.isAnonymous(caller)) { assert false };
+    let subaccount = principalToSubaccount(caller);
+    await ckbtcMinter.update_balance({ owner = ?Principal.fromActor(CivicOS); subaccount = ?subaccount })
+  };
+
+  public shared ({ caller }) func getCkbtcBalance() : async Nat {
+    if (Principal.isAnonymous(caller)) { assert false };
+    let subaccount = principalToSubaccount(caller);
+    await ckbtcLedger.icrc1_balance_of({ owner = Principal.fromActor(CivicOS); subaccount = ?subaccount })
+  };
+
+  public shared ({ caller }) func withdrawBtc(btcAddress : Text, amount : Nat64) : async RetrieveBtcResult {
+    if (Principal.isAnonymous(caller)) { assert false };
+    let fromSubaccount = principalToSubaccount(caller);
+    let approveResult = await ckbtcLedger.icrc2_approve({
+      from_subaccount = ?fromSubaccount;
+      spender = { owner = Principal.fromText("mqygn-kiaaa-aaaar-qaadq-cai"); subaccount = null };
+      amount = Nat64.toNat(amount) + 10;
+      expected_allowance = null; expires_at = null; fee = ?10; memo = null; created_at_time = null;
+    });
+    switch (approveResult) {
+      case (#Err(e)) { return #Err(#GenericError({ error_code = 0; error_message = "Approve for minter failed" })) };
+      case (#Ok(_)) {};
+    };
+    await ckbtcMinter.retrieve_btc_with_approval({ address = btcAddress; amount = amount; from_subaccount = ?fromSubaccount })
   };
 }

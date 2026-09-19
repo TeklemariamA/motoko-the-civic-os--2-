@@ -2,133 +2,236 @@ import type { Principal } from '@icp-sdk/core/principal';
 import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 
-export interface BountyPostResponse { 'message' : string, 'bounty_id' : bigint }
-export interface BountyValue { 'id' : bigint, 'current_reward' : number }
-export interface ChatMessage { 'content' : string, 'role' : string }
-export interface DisputeCase {
-  'id' : bigint,
-  'status' : DisputeStatus,
-  'jurors' : Array<Principal>,
-  'claimant' : Principal,
-  'votes' : Array<[Principal, DisputeVote]>,
-  'tier' : DisputeTier,
-  'bountyId' : bigint,
-  'appealStake' : bigint,
+export interface AuditEntry {
+  'verified' : boolean,
+  'action' : string,
+  'proof_signature' : string,
+  'timestamp' : bigint,
 }
-export type DisputeStatus = { 'Open' : null } |
-  { 'Voting' : null } |
-  { 'Resolved' : null };
-export type DisputeTier = { 'Seven' : null } |
-  { 'Five' : null } |
-  { 'Nine' : null };
-export type DisputeVote = { 'Approve' : null } |
-  { 'Reject' : null };
-export interface LoginResponse {
-  'merit' : bigint,
-  'username' : string,
-  'message' : string,
-  'wallet' : string,
-}
-export interface MilestoneTranche {
-  'id' : bigint,
-  'status' : StewardStatus,
-  'recipient' : Principal,
-  'created_at' : bigint,
-  'amount_e8s' : bigint,
-  'steward' : Principal,
-  'required_telemetry_metric' : string,
-  'partition' : string,
-  'signatures' : Array<Principal>,
-}
-export type Result = { 'ok' : null } |
-  { 'err' : string };
-export type Result_1 = { 'ok' : DisputeVote } |
-  { 'err' : string };
-export type Result_2 = { 'ok' : DisputeCase } |
-  { 'err' : string };
-export type Result_3 = { 'ok' : string } |
-  { 'err' : string };
-export type Result_4 = { 'ok' : bigint } |
-  { 'err' : string };
-export interface StewardPolicySummary {
-  'telemetry_oracle_id' : Principal,
-  'governance_canister_id' : Principal,
-  'required_signatures' : bigint,
-}
-export type StewardStatus = { 'Approved' : null } |
-  { 'Executed' : null } |
-  { 'Revoked' : null } |
-  { 'Pending' : null };
-export interface TreasuryActionResponse {
-  'release' : [] | [TreasuryRelease],
-  'summary' : [] | [TreasuryPartitionSummary],
-  'message' : string,
-  'partition' : string,
-}
-export interface TreasuryPartitionSummary {
-  'allocated' : bigint,
-  'kind' : string,
-  'memo' : string,
-  'name' : string,
-  'released' : bigint,
-  'available' : bigint,
-}
-export interface TreasuryRelease {
+export interface Bill {
   'id' : bigint,
   'status' : string,
-  'memo' : string,
+  'title' : string,
+  'abstain_votes' : bigint,
+  'yes_votes' : bigint,
+  'body' : string,
   'created_at' : bigint,
-  'partition' : string,
-  'amount' : bigint,
+  'author' : string,
+  'category' : string,
+  'no_votes' : bigint,
+  'forked_from' : [] | [bigint],
 }
-export type Username = string;
+export interface Member {
+  'bio' : string,
+  'merit' : bigint,
+  'name' : string,
+  'role' : string,
+  'joined_at' : bigint,
+  'is_active' : boolean,
+}
+export interface PendingUtxo {
+  'confirmations' : number,
+  'value' : bigint,
+  'outpoint' : { 'txid' : Uint8Array | number[], 'vout' : number },
+}
+export interface ResearchRecord {
+  'id' : bigint,
+  'title' : string,
+  'domain' : string,
+  'created_at' : bigint,
+  'author' : string,
+  'data_hash' : string,
+  'abstract_text' : string,
+}
+export type RetrieveBtcError = { 'MalformedAddress' : string } |
+  { 'GenericError' : { 'error_message' : string, 'error_code' : bigint } } |
+  { 'TemporarilyUnavailable' : string } |
+  { 'InsufficientAllowance' : { 'allowance' : bigint } } |
+  { 'AlreadyProcessing' : null } |
+  { 'AmountTooLow' : bigint } |
+  { 'InsufficientFunds' : { 'balance' : bigint } };
+export type RetrieveBtcResult = { 'Ok' : { 'block_index' : bigint } } |
+  { 'Err' : RetrieveBtcError };
+export interface SkillCommit {
+  'id' : bigint,
+  'member' : string,
+  'evidence_hash' : string,
+  'created_at' : bigint,
+  'endorsements' : Array<string>,
+  'skill' : string,
+}
+export type UpdateBalanceError = {
+    'GenericError' : { 'error_message' : string, 'error_code' : bigint }
+  } |
+  { 'TemporarilyUnavailable' : string } |
+  { 'AlreadyProcessing' : null } |
+  {
+    'NoNewUtxos' : {
+      'required_confirmations' : number,
+      'pending_utxos' : [] | [Array<PendingUtxo>],
+      'current_confirmations' : [] | [number],
+    }
+  };
+export type UpdateBalanceResult = { 'Ok' : Array<UtxoStatus> } |
+  { 'Err' : UpdateBalanceError };
+export interface Utxo {
+  'height' : number,
+  'value' : bigint,
+  'outpoint' : { 'txid' : Uint8Array | number[], 'vout' : number },
+}
+export type UtxoStatus = { 'ValueTooSmall' : Utxo } |
+  { 'Tainted' : Utxo } |
+  {
+    'Minted' : {
+      'minted_amount' : bigint,
+      'block_index' : bigint,
+      'utxo' : Utxo,
+    }
+  } |
+  { 'Checked' : Utxo };
 export interface _SERVICE {
-  'appeal_dispute' : ActorMethod<
-    [bigint, DisputeTier, Array<Principal>, bigint],
-    Result_4
+  /**
+   * / Cast a verdict as a juror.
+   * / Once all jurors have voted, Schelling-point consensus resolves the case
+   * / and redistributes merit to honest jurors.
+   * / Returns null if the case does not exist or the caller is not an assigned juror.
+   */
+  'castVerdict' : ActorMethod<
+    [bigint, string, string],
+    [] | [{ 'verdict' : string, 'message' : string }]
   >,
-  'approve_tranche' : ActorMethod<[bigint], string>,
-  'chat' : ActorMethod<[Array<ChatMessage>], string>,
-  'check_for_deposits_and_mint_ckbtc' : ActorMethod<[], string>,
-  'configure_ckbtc_canister' : ActorMethod<[Principal], string>,
-  'configure_steward_policy' : ActorMethod<
-    [Principal, Principal, bigint],
-    StewardPolicySummary
+  /**
+   * / Cast a vote on an active bill.
+   * / choice must be "yes", "no", or "abstain".
+   * / A bill automatically commits (passes) once yes votes strictly exceed 50 % of
+   * / all participating votes (yes + no), implementing the 50+1 majority rule.
+   * / Returns null if the bill is not found or the citizen has already voted.
+   */
+  'castVote' : ActorMethod<
+    [bigint, string, string],
+    [] | [
+      {
+        'no' : bigint,
+        'yes' : bigint,
+        'status' : string,
+        'abstain' : bigint,
+        'message' : string,
+      }
+    ]
   >,
-  'createBounty' : ActorMethod<[string, number, number], BountyPostResponse>,
-  'create_dispute' : ActorMethod<
-    [bigint, Principal, DisputeTier, Array<Principal>],
-    Result_4
+  'checkBtcDeposit' : ActorMethod<[], UpdateBalanceResult>,
+  /**
+   * / Commit a verifiable skill to the Knowledge Commons.
+   * / Any enrolled member can commit skills; evidence is stored as a content hash.
+   * / Returns null if the member is not enrolled.
+   */
+  'commitSkill' : ActorMethod<
+    [string, string, string],
+    [] | [{ 'skill_id' : bigint, 'message' : string }]
   >,
-  'create_tranche' : ActorMethod<
-    [Principal, string, bigint, string],
-    MilestoneTranche
+  /**
+   * / Post a new time-escalating bounty to the grid.
+   */
+  'createBounty' : ActorMethod<
+    [string, number, number],
+    { 'message' : string, 'bounty_id' : bigint }
   >,
-  'execute_tranche_release' : ActorMethod<[bigint], Result_3>,
-  'getBountyValue' : ActorMethod<[bigint], Array<BountyValue>>,
+  /**
+   * / Endorse a skill commit on behalf of another member.
+   * / A member cannot endorse their own skill. Returns null if skill or endorser not found.
+   */
+  'endorseSkill' : ActorMethod<
+    [bigint, string],
+    [] | [
+      { 'endorsement_count' : bigint, 'skill_id' : bigint, 'message' : string }
+    ]
+  >,
+  /**
+   * / Enroll a new citizen in the Social OS.
+   * / Returns an error message if the name is already taken.
+   */
+  'enrollMember' : ActorMethod<
+    [string, string, string],
+    { 'ok' : boolean, 'message' : string }
+  >,
+  'executeCivicFork' : ActorMethod<[bigint, bigint, string, string], string>,
+  /**
+   * / File a new case and assign jurors via merit-weighted sortition.
+   */
+  'fileCase' : ActorMethod<
+    [string, string, string, string],
+    { 'jury' : Array<string>, 'case_id' : bigint }
+  >,
+  /**
+   * / Fork an existing bill into a new variant with amended title and body.
+   * / The fork starts with 0 votes and status "active".
+   * / Returns null if the original bill does not exist.
+   */
+  'forkBill' : ActorMethod<
+    [bigint, string, string, string],
+    [] | [{ 'bill_id' : bigint, 'message' : string }]
+  >,
+  /**
+   * / Return a single bill by ID.
+   */
+  'getBill' : ActorMethod<[bigint], [] | [Bill]>,
+  /**
+   * / Return the current (time-escalated) reward for a bounty.
+   * / Returns null if the bounty does not exist.
+   */
+  'getBountyValue' : ActorMethod<
+    [bigint],
+    [] | [{ 'id' : bigint, 'current_reward' : number }]
+  >,
   'getBtcDepositAddress' : ActorMethod<[], string>,
-  'get_active_stewards' : ActorMethod<[], Array<Principal>>,
-  'get_commons_partitions' : ActorMethod<[], Array<TreasuryPartitionSummary>>,
-  'get_dispute_case' : ActorMethod<[bigint], Result_2>,
-  'get_dispute_verdict' : ActorMethod<[bigint], Result_1>,
-  'get_steward_policy' : ActorMethod<[], StewardPolicySummary>,
-  'get_tranches' : ActorMethod<[], Array<MilestoneTranche>>,
-  'get_treasury_releases' : ActorMethod<[], Array<TreasuryRelease>>,
-  'is_ckbtc_canister_configured' : ActorMethod<[], boolean>,
-  'login_or_register' : ActorMethod<[Username], LoginResponse>,
-  'record_telemetry_metric' : ActorMethod<[Principal, string, boolean], string>,
-  'register_commons_partition' : ActorMethod<
-    [string, string, bigint, string],
-    TreasuryPartitionSummary
+  'getCkbtcBalance' : ActorMethod<[], bigint>,
+  /**
+   * / Return a member profile by name.
+   */
+  'getMember' : ActorMethod<[string], [] | [Member]>,
+  'initiateAppeal' : ActorMethod<[bigint], string>,
+  /**
+   * / Return all bills (active, passed, rejected).
+   */
+  'listBills' : ActorMethod<[], Array<Bill>>,
+  /**
+   * / Return all enrolled members.
+   */
+  'listMembers' : ActorMethod<[], Array<Member>>,
+  /**
+   * / Return all open-science research records.
+   */
+  'listResearch' : ActorMethod<[], Array<ResearchRecord>>,
+  /**
+   * / Return all skill commits for a given member.
+   */
+  'listSkillCommits' : ActorMethod<[string], Array<SkillCommit>>,
+  /**
+   * / Submit a zero-knowledge proof of a private action.
+   * / The action is recorded on the public ledger under the proof hash, not the user's identity.
+   */
+  'privateAction' : ActorMethod<[string, string], { 'message' : string }>,
+  /**
+   * / Propose a new bill for the community to vote on.
+   */
+  'proposeBill' : ActorMethod<
+    [string, string, string, string],
+    { 'bill_id' : bigint, 'message' : string }
   >,
-  'register_steward' : ActorMethod<[Principal], string>,
-  'release_treasury' : ActorMethod<
-    [string, bigint, string],
-    TreasuryActionResponse
+  /**
+   * / Return the full public audit log.
+   * / Anyone can see WHAT happened, but identities are hidden behind proof hashes.
+   */
+  'publicLog' : ActorMethod<[], Array<AuditEntry>>,
+  /**
+   * / Publish a research record to the open-science commons.
+   * / Per the Human Source Code principle: all publicly relevant knowledge is immediately public.
+   */
+  'publishResearch' : ActorMethod<
+    [string, string, string, string, string],
+    { 'research_id' : bigint, 'message' : string }
   >,
-  'revoke_tranche' : ActorMethod<[bigint], string>,
-  'submit_dispute_vote' : ActorMethod<[bigint, DisputeVote], Result>,
-  'unregister_steward' : ActorMethod<[Principal], string>,
+  'withdrawBtc' : ActorMethod<[string, bigint], RetrieveBtcResult>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

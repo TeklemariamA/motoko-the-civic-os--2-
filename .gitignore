@@ -10,6 +10,11 @@ coverage/
 /build
 /dist
 frontend/dist/
+frontend/dev-dist/
+
+# Python
+__pycache__/
+*.py[cod]
 
 # DFX
 .dfx/

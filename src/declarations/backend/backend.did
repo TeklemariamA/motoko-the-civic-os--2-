@@ -1,168 +1,229 @@
-type Username = text;
-type TreasuryRelease = 
- record {
-   amount: nat;
-   created_at: int;
-   id: nat;
-   memo: text;
-   partition: text;
-   status: text;
+type UtxoStatus = 
+ variant {
+   Checked: Utxo;
+   Minted: record {
+             block_index: nat64;
+             minted_amount: nat64;
+             utxo: Utxo;
+           };
+   Tainted: Utxo;
+   ValueTooSmall: Utxo;
  };
-type TreasuryPartitionSummary = 
+type Utxo = 
  record {
-   allocated: nat;
-   available: nat;
-   kind: text;
-   memo: text;
+   height: nat32;
+   outpoint: record {
+               txid: blob;
+               vout: nat32;
+             };
+   value: nat64;
+ };
+type UpdateBalanceResult = 
+ variant {
+   Err: UpdateBalanceError;
+   Ok: vec UtxoStatus;
+ };
+type UpdateBalanceError = 
+ variant {
+   AlreadyProcessing;
+   GenericError: record {
+                   error_code: nat64;
+                   error_message: text;
+                 };
+   NoNewUtxos:
+    record {
+      current_confirmations: opt nat32;
+      pending_utxos: opt vec PendingUtxo;
+      required_confirmations: nat32;
+    };
+   TemporarilyUnavailable: text;
+ };
+type SkillCommit = 
+ record {
+   created_at: int;
+   endorsements: vec text;
+   evidence_hash: text;
+   id: nat;
+   member: text;
+   skill: text;
+ };
+type RetrieveBtcResult = 
+ variant {
+   Err: RetrieveBtcError;
+   Ok: record {block_index: nat64;};
+ };
+type RetrieveBtcError = 
+ variant {
+   AlreadyProcessing;
+   AmountTooLow: nat64;
+   GenericError: record {
+                   error_code: nat64;
+                   error_message: text;
+                 };
+   InsufficientAllowance: record {allowance: nat64;};
+   InsufficientFunds: record {balance: nat64;};
+   MalformedAddress: text;
+   TemporarilyUnavailable: text;
+ };
+type ResearchRecord = 
+ record {
+   abstract_text: text;
+   author: text;
+   created_at: int;
+   data_hash: text;
+   domain: text;
+   id: nat;
+   title: text;
+ };
+type PendingUtxo = 
+ record {
+   confirmations: nat32;
+   outpoint: record {
+               txid: blob;
+               vout: nat32;
+             };
+   value: nat64;
+ };
+type Member = 
+ record {
+   bio: text;
+   is_active: bool;
+   joined_at: int;
+   merit: int;
    name: text;
-   released: nat;
- };
-type TreasuryActionResponse = 
- record {
-   message: text;
-   partition: text;
-   release: opt TreasuryRelease;
-   summary: opt TreasuryPartitionSummary;
- };
-type StewardStatus = 
- variant {
-   Approved;
-   Executed;
-   Pending;
-   Revoked;
- };
-type StewardPolicySummary = 
- record {
-   governance_canister_id: principal;
-   required_signatures: nat;
-   telemetry_oracle_id: principal;
- };
-type Result_4 = 
- variant {
-   err: text;
-   ok: nat;
- };
-type Result_3 = 
- variant {
-   err: text;
-   ok: text;
- };
-type Result_2 = 
- variant {
-   err: text;
-   ok: DisputeCase;
- };
-type Result_1 = 
- variant {
-   err: text;
-   ok: DisputeVote;
- };
-type Result = 
- variant {
-   err: text;
-   ok;
- };
-type MilestoneTranche = 
- record {
-   amount_e8s: nat64;
-   created_at: int;
-   id: nat;
-   partition: text;
-   recipient: principal;
-   required_telemetry_metric: text;
-   signatures: vec principal;
-   status: StewardStatus;
-   steward: principal;
- };
-type LoginResponse = 
- record {
-   merit: nat;
-   message: text;
-   username: text;
-   wallet: text;
- };
-type DisputeVote = 
- variant {
-   Approve;
-   Reject;
- };
-type DisputeTier = 
- variant {
-   Five;
-   Nine;
-   Seven;
- };
-type DisputeStatus = 
- variant {
-   Open;
-   Resolved;
-   Voting;
- };
-type DisputeCase = 
- record {
-   appealStake: nat;
-   bountyId: nat;
-   claimant: principal;
-   id: nat;
-   jurors: vec principal;
-   status: DisputeStatus;
-   tier: DisputeTier;
-   votes: vec record {
-                principal;
-                DisputeVote;
-              };
- };
-type ChatMessage = 
- record {
-   content: text;
    role: text;
  };
-type BountyValue = 
+type Bill = 
  record {
-   current_reward: float64;
+   abstain_votes: nat;
+   author: text;
+   body: text;
+   category: text;
+   created_at: int;
+   forked_from: opt nat;
    id: nat;
+   no_votes: nat;
+   status: text;
+   title: text;
+   yes_votes: nat;
  };
-type BountyPostResponse = 
+type AuditEntry = 
  record {
-   bounty_id: nat;
-   message: text;
+   action: text;
+   proof_signature: text;
+   timestamp: int;
+   verified: bool;
  };
 service : {
-  appeal_dispute: (caseId: nat, nextTier: DisputeTier, newJurors:
-   vec principal, stakeAmount: nat) -> (Result_4);
-  approve_tranche: (trancheId: nat) -> (text);
-  chat: (messages: vec ChatMessage) -> (text);
-  check_for_deposits_and_mint_ckbtc: () -> (text);
-  configure_ckbtc_canister: (canisterId: principal) -> (text);
-  configure_steward_policy: (governanceCanisterId: principal,
-   telemetryOracleId: principal, requiredSignatures: nat) ->
-   (StewardPolicySummary);
-  createBounty: (description: text, base_reward: float64, urgency_coeff:
-   float64) -> (BountyPostResponse);
-  create_dispute: (bountyId: nat, claimant: principal, tier: DisputeTier,
-   selectedJurors: vec principal) -> (Result_4);
-  create_tranche: (recipient: principal, partitionName: text, amountE8s:
-   nat64, requiredTelemetryMetric: text) -> (MilestoneTranche);
-  execute_tranche_release: (trancheId: nat) -> (Result_3);
-  getBountyValue: (bountyId: nat) -> (vec BountyValue) query;
+  /// Cast a verdict as a juror.
+  /// Once all jurors have voted, Schelling-point consensus resolves the case
+  /// and redistributes merit to honest jurors.
+  /// Returns null if the case does not exist or the caller is not an assigned juror.
+  castVerdict: (case_id: nat, juror_name: text, verdict: text) ->
+   (opt record {
+          message: text;
+          verdict: text;
+        });
+  /// Cast a vote on an active bill.
+  /// choice must be "yes", "no", or "abstain".
+  /// A bill automatically commits (passes) once yes votes strictly exceed 50 % of
+  /// all participating votes (yes + no), implementing the 50+1 majority rule.
+  /// Returns null if the bill is not found or the citizen has already voted.
+  castVote: (bill_id: nat, citizen: text, choice: text) ->
+   (opt record {
+          abstain: nat;
+          message: text;
+          no: nat;
+          status: text;
+          yes: nat;
+        });
+  checkBtcDeposit: () -> (UpdateBalanceResult);
+  /// Commit a verifiable skill to the Knowledge Commons.
+  /// Any enrolled member can commit skills; evidence is stored as a content hash.
+  /// Returns null if the member is not enrolled.
+  commitSkill: (member: text, skill: text, evidence: text) ->
+   (opt record {
+          message: text;
+          skill_id: nat;
+        });
+  /// Post a new time-escalating bounty to the grid.
+  createBounty: (description: text, base_reward: float64, urgency:
+   float64) -> (record {
+                  bounty_id: nat;
+                  message: text;
+                });
+  /// Endorse a skill commit on behalf of another member.
+  /// A member cannot endorse their own skill. Returns null if skill or endorser not found.
+  endorseSkill: (skill_id: nat, endorser: text) ->
+   (opt record {
+          endorsement_count: nat;
+          message: text;
+          skill_id: nat;
+        });
+  /// Enroll a new citizen in the Social OS.
+  /// Returns an error message if the name is already taken.
+  enrollMember: (name: text, bio: text, role: text) ->
+   (record {
+      message: text;
+      ok: bool;
+    });
+  executeCivicFork: (proposalId: nat, forkSignatories: nat, newWallet: 
+   text, newCodeBase: text) -> (text);
+  /// File a new case and assign jurors via merit-weighted sortition.
+  fileCase: (plaintiff: text, defendant: text, category: text, evidence:
+   text) -> (record {
+               case_id: nat;
+               jury: vec text;
+             });
+  /// Fork an existing bill into a new variant with amended title and body.
+  /// The fork starts with 0 votes and status "active".
+  /// Returns null if the original bill does not exist.
+  forkBill: (original_id: nat, title: text, body: text, author: text) ->
+   (opt record {
+          bill_id: nat;
+          message: text;
+        });
+  /// Return a single bill by ID.
+  getBill: (bill_id: nat) -> (opt Bill) query;
+  /// Return the current (time-escalated) reward for a bounty.
+  /// Returns null if the bounty does not exist.
+  getBountyValue: (bounty_id: nat) ->
+   (opt record {
+          current_reward: float64;
+          id: nat;
+        }) query;
   getBtcDepositAddress: () -> (text);
-  get_active_stewards: () -> (vec principal) query;
-  get_commons_partitions: () -> (vec TreasuryPartitionSummary) query;
-  get_dispute_case: (caseId: nat) -> (Result_2) query;
-  get_dispute_verdict: (caseId: nat) -> (Result_1) query;
-  get_steward_policy: () -> (StewardPolicySummary) query;
-  get_tranches: () -> (vec MilestoneTranche) query;
-  get_treasury_releases: () -> (vec TreasuryRelease) query;
-  is_ckbtc_canister_configured: () -> (bool) query;
-  login_or_register: (username: Username) -> (LoginResponse);
-  record_telemetry_metric: (steward: principal, metric: text, isMet: 
-   bool) -> (text);
-  register_commons_partition: (name: text, kind: text, allocated: nat, memo:
-   text) -> (TreasuryPartitionSummary);
-  register_steward: (steward: principal) -> (text);
-  release_treasury: (partitionName: text, amount: nat, memo: text) ->
-   (TreasuryActionResponse);
-  revoke_tranche: (trancheId: nat) -> (text);
-  submit_dispute_vote: (caseId: nat, vote: DisputeVote) -> (Result);
-  unregister_steward: (steward: principal) -> (text);
+  getCkbtcBalance: () -> (nat);
+  /// Return a member profile by name.
+  getMember: (name: text) -> (opt Member) query;
+  initiateAppeal: (case_id: nat) -> (text);
+  /// Return all bills (active, passed, rejected).
+  listBills: () -> (vec Bill) query;
+  /// Return all enrolled members.
+  listMembers: () -> (vec Member) query;
+  /// Return all open-science research records.
+  listResearch: () -> (vec ResearchRecord) query;
+  /// Return all skill commits for a given member.
+  listSkillCommits: (member: text) -> (vec SkillCommit) query;
+  /// Submit a zero-knowledge proof of a private action.
+  /// The action is recorded on the public ledger under the proof hash, not the user's identity.
+  privateAction: (proof_hash: text, action_type: text) ->
+   (record {message: text;});
+  /// Propose a new bill for the community to vote on.
+  proposeBill: (title: text, body: text, author: text, category: text) ->
+   (record {
+      bill_id: nat;
+      message: text;
+    });
+  /// Return the full public audit log.
+  /// Anyone can see WHAT happened, but identities are hidden behind proof hashes.
+  publicLog: () -> (vec AuditEntry) query;
+  /// Publish a research record to the open-science commons.
+  /// Per the Human Source Code principle: all publicly relevant knowledge is immediately public.
+  publishResearch: (title: text, author: text, abstract_text: text, data:
+   text, domain: text) -> (record {
+                             message: text;
+                             research_id: nat;
+                           });
+  withdrawBtc: (btcAddress: text, amount: nat64) -> (RetrieveBtcResult);
 }
