@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { backend } from './declarations/backend/index.js';
 import { initAuth, login, logout, createAuthenticatedActor } from './auth.js';
 import { ShareBar, buildShareUrls } from './ShareBar.jsx';
+import { I18nProvider, useTranslation, LanguageSelector } from './i18n.jsx';
 import botImg from '/bot.svg';
 import userImg from '/user.svg';
 import '/index.css';
@@ -1019,6 +1020,7 @@ const BASE_TABS = ['Bounties', 'Audit', 'Justice', 'Membership', 'Commons', 'Leg
 const TABS = CHATBOT_ENABLED ? ['Chat', ...BASE_TABS] : BASE_TABS;
 
 const App = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [osName, setOsName] = useState('[Insert Civic Common Name]');
   const [identity, setIdentity] = useState(null);
@@ -1076,7 +1078,7 @@ const App = () => {
       <div className="flex w-full max-w-5xl flex-col overflow-hidden rounded-md bg-white shadow-lg sm:rounded-lg min-h-[90vh] sm:min-h-[80vh] lg:min-h-[70vh]">
         
         {/* Global Application Header */}
-        <div className="border-b bg-blue-600 px-4 py-4 sm:px-6 flex items-center justify-between">
+        <div className="border-b bg-blue-600 px-4 py-4 sm:px-6 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center">
             <input 
               type="text"
@@ -1084,16 +1086,17 @@ const App = () => {
               value={osName}
               onChange={(e) => setOsName(e.target.value)}
             />
-            <h1 className="text-xl font-bold tracking-tight text-white ml-2">OS</h1>
+            <h1 className="text-xl font-bold tracking-tight text-white ml-2">{t('header.osTitleSuffix', 'OS')}</h1>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <LanguageSelector />
             {deferredPrompt && (
               <button 
                 onClick={handleInstallClick} 
                 className="bg-yellow-400 text-blue-900 hover:bg-yellow-500 px-3 py-1 rounded shadow text-sm font-semibold whitespace-nowrap"
                 title="Install Civic OS App"
               >
-                Install App
+                {t('header.installApp', 'Install App')}
               </button>
             )}
             {!identity ? (
@@ -1101,7 +1104,7 @@ const App = () => {
                 onClick={handleLogin} 
                 className="bg-white text-blue-600 hover:bg-gray-100 px-3 py-1 rounded shadow text-sm font-semibold whitespace-nowrap"
               >
-                Login II
+                {t('header.loginII', 'Login II')}
               </button>
             ) : (
               <button 
@@ -1109,7 +1112,7 @@ const App = () => {
                 className="bg-blue-800 text-white hover:bg-blue-900 px-3 py-1 rounded shadow text-sm font-semibold whitespace-nowrap"
                 title={identity.getPrincipal().toText()}
               >
-                Logout {identity.getPrincipal().toText().slice(0, 5)}...
+                {t('header.logout', 'Logout')} {identity.getPrincipal().toText().slice(0, 5)}...
               </button>
             )}
           </div>
@@ -1128,7 +1131,7 @@ const App = () => {
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {tab}
+              {t(`tabs.${tab}`, tab)}
             </button>
           ))}
           </div>
@@ -1154,6 +1157,8 @@ export default App;
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <I18nProvider>
+      <App />
+    </I18nProvider>
   </React.StrictMode>
 );

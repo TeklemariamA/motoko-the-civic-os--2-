@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from './i18n.jsx';
 
 export const buildShareUrls = (title, text) => {
   const baseUrl = typeof window !== 'undefined' ? window.location.href : '';
@@ -16,10 +17,11 @@ export const buildShareUrls = (title, text) => {
 };
 
 export const ShareBar = ({ title, text }) => {
+  const { t } = useTranslation();
   const share = buildShareUrls(title, text);
   return (
     <div className="mt-6 border-t pt-4 flex flex-wrap items-center gap-2 text-xs text-gray-500" aria-label="Share links">
-      <span>Share:</span>
+      <span>{t('share.shareLabel', 'Share:')}</span>
       <a className="rounded bg-black px-3 py-1.5 text-white hover:opacity-90 transition-opacity" href={share.x} target="_blank" rel="noopener noreferrer">X</a>
       <a className="rounded bg-blue-700 px-3 py-1.5 text-white hover:opacity-90 transition-opacity" href={share.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
       <a className="rounded bg-blue-600 px-3 py-1.5 text-white hover:opacity-90 transition-opacity" href={share.facebook} target="_blank" rel="noopener noreferrer">Facebook</a>
