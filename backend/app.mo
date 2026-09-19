@@ -1,6 +1,7 @@
 import Text "mo:base/Text";
 import Time "mo:base/Time";
 import Int "mo:base/Int";
+import Float "mo:base/Float";
 import Array "mo:base/Array";
 import Nat64 "mo:base/Nat64";
 import Principal "mo:base/Principal";
@@ -113,6 +114,24 @@ persistent actor {
     appealStake : Nat;
   };
 
+  public type Bounty = {
+    id : Nat;
+    description : Text;
+    base_reward : Float;
+    urgency_coeff : Float;
+    created_at : Int;
+  };
+
+  public type BountyPostResponse = {
+    message : Text;
+    bounty_id : Nat;
+  };
+
+  public type BountyValue = {
+    id : Nat;
+    current_reward : Float;
+  };
+
   // We use a simple Array to easily keep it stable or just transient
   transient var users : [(Username, UserData)] = [];
   transient var rngCounter : Nat = 0;
@@ -149,7 +168,16 @@ persistent actor {
   transient var telemetryMetrics : [(Text, Bool)] = [];
   transient var disputeCaseCounter : Nat = 0;
   transient var disputeCases : [(Nat, DisputeCase)] = [];
-  transient var ckbtcCanisterId : ?Principal = null;
+  transient var bounties : [Bounty] = [];
+  transient var bountyCounter : Nat = 0;
+  transient var ckbtcCanisterId : ?Principal = ?Principal.fromText("mqygn-kiaaa-aaaar-qaadq-cai");
+
+  func resolveCkBtcCanisterId() : Principal {
+    switch (ckbtcCanisterId) {
+      case null { Principal.fromText("mqygn-kiaaa-aaaar-qaadq-cai") };
+      case (?id) { id };
+    }
+  };
 
   func pseudoHex(n: Nat) : Text {
     let hexChars = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"];
@@ -303,6 +331,15 @@ persistent actor {
     null;
   };
 
+  func findBounty(bountyId : Nat) : ?Bounty {
+    for (bounty in bounties.vals()) {
+      if (bounty.id == bountyId) {
+        return ?bounty;
+      };
+    };
+    null;
+  };
+
   func applyTreasuryRelease(partitionName : Text, amount : Nat, memo : Text) : TreasuryActionResponse {
     switch (findTreasuryPartition(partitionName)) {
       case null {
@@ -392,6 +429,51 @@ persistent actor {
   // --- CHAT LOGIC ---
   public shared(msg) func chat(messages : [ChatMessage]) : async Text {
     return "This is a dummy chat response from the Native Motoko CivicOS backend.";
+  };
+
+  // --- BOUNTY LOGIC ---
+  public shared(_msg) func createBounty(
+    description : Text,
+    base_reward : Float,
+    urgency_coeff : Float,
+  ) : async BountyPostResponse {
+    bountyCounter := bountyCounter + 1;
+    let newBounty : Bounty = {
+      id = bountyCounter;
+      description = description;
+      base_reward = base_reward;
+      urgency_coeff = urgency_coeff;
+      created_at = Time.now();
+    };
+    bounties := Array.append(bounties, [newBounty]);
+    {
+      message = "Bounty posted to the grid";
+      bounty_id = bountyCounter;
+    }
+  };
+
+  public query func getBountyValue(bountyId : Nat) : async [BountyValue] {
+    switch (findBounty(bountyId)) {
+      case null {
+        []
+      };
+      case (?bounty) {
+        let now = Time.now();
+        let elapsedNanos = if (now > bounty.created_at) {
+          now - bounty.created_at
+        } else {
+          0
+        };
+        let elapsedSeconds = Float.fromInt(elapsedNanos) / 1_000_000_000.0;
+        let currentReward = bounty.base_reward * (1.0 + (bounty.urgency_coeff * (elapsedSeconds / 60.0)));
+        [
+          {
+            id = bounty.id;
+            current_reward = currentReward;
+          },
+        ]
+      };
+    }
   };
 
   // --- MULTI-JUROR APPEALS ---
@@ -554,9 +636,8 @@ persistent actor {
   };
 
   // --- CKBTC CANISTER INTEGRATION ---
-  // The app can now be wired to a real ICP ckBTC backend if a canister ID is configured.
-  // If not configured, we keep the compatibility fallback so the frontend does not fail
-  // while the deployment is still being connected to a live ckBTC provider.
+  // The app now defaults to the live ICP ckBTC minter on mainnet and can still be
+  // reconfigured at runtime when a different minter or testnet deployment is required.
   public shared func configure_ckbtc_canister(canisterId : Principal) : async Text {
     ckbtcCanisterId := ?canisterId;
     "ckBTC canister configured: " # Principal.toText(canisterId)
@@ -569,34 +650,21 @@ persistent actor {
     }
   };
 
-  public shared func getBtcDepositAddress() : async Text {
-    switch (ckbtcCanisterId) {
-      case null {
-        // Compatibility fallback for demos or local development until a real canister is configured.
-        "bc1qexampledepositaddressforcivicosdemo"
-      };
-      case (?canisterId) {
-        let ckbtcActor = actor (Principal.toText(canisterId)) : actor {
-          get_btc_address : shared () -> async Text;
-        };
-        await ckbtcActor.get_btc_address();
-      };
-    }
+  public shared(msg) func getBtcDepositAddress() : async Text {
+    let canisterId = resolveCkBtcCanisterId();
+    let ckbtcActor = actor (Principal.toText(canisterId)) : actor {
+      get_btc_address : shared ({ owner : ?Principal; subaccount : ?Blob }) -> async Text;
+    };
+    await ckbtcActor.get_btc_address({ owner = ?msg.caller; subaccount = null });
   };
 
-  public shared func check_for_deposits_and_mint_ckbtc() : async Text {
-    switch (ckbtcCanisterId) {
-      case null {
-        "No live ckBTC canister is configured. The compatibility stub is active until a real canister ID is provided."
-      };
-      case (?canisterId) {
-        let ckbtcActor = actor (Principal.toText(canisterId)) : actor {
-          get_btc_address : shared () -> async Text;
-        };
-        let address = await ckbtcActor.get_btc_address();
-        "Live ckBTC canister connected: " # Principal.toText(canisterId) # ". Deposit address: " # address # ". Minting remains gated by the upstream ckBTC flow."
-      };
-    }
+  public shared(msg) func check_for_deposits_and_mint_ckbtc() : async Text {
+    let canisterId = resolveCkBtcCanisterId();
+    let ckbtcActor = actor (Principal.toText(canisterId)) : actor {
+      get_btc_address : shared ({ owner : ?Principal; subaccount : ?Blob }) -> async Text;
+    };
+    let address = await ckbtcActor.get_btc_address({ owner = ?msg.caller; subaccount = null });
+    "Live ckBTC canister connected: " # Principal.toText(canisterId) # ". Deposit address: " # address # ". Minting remains gated by the upstream ckBTC flow."
   };
 
   // --- TREASURY & COMMONS PARTITIONING ---

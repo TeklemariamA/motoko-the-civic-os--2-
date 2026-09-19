@@ -1,26 +1,5 @@
 type Username = text;
-type LoginResponse = 
- record {
-   merit: nat;
-   message: text;
-   username: text;
-   wallet: text;
- };
-type ChatMessage = 
- record {
-   content: text;
-   role: text;
- };
-type TreasuryPartitionSummary =
- record {
-   allocated: nat;
-   available: nat;
-   kind: text;
-   memo: text;
-   name: text;
-   released: nat;
- };
-type TreasuryRelease =
+type TreasuryRelease = 
  record {
    amount: nat;
    created_at: int;
@@ -29,21 +8,61 @@ type TreasuryRelease =
    partition: text;
    status: text;
  };
-type TreasuryActionResponse =
+type TreasuryPartitionSummary = 
+ record {
+   allocated: nat;
+   available: nat;
+   kind: text;
+   memo: text;
+   name: text;
+   released: nat;
+ };
+type TreasuryActionResponse = 
  record {
    message: text;
    partition: text;
    release: opt TreasuryRelease;
    summary: opt TreasuryPartitionSummary;
  };
-type StewardStatus =
+type StewardStatus = 
  variant {
-   Pending;
    Approved;
    Executed;
+   Pending;
    Revoked;
  };
-type MilestoneTranche =
+type StewardPolicySummary = 
+ record {
+   governance_canister_id: principal;
+   required_signatures: nat;
+   telemetry_oracle_id: principal;
+ };
+type Result_4 = 
+ variant {
+   err: text;
+   ok: nat;
+ };
+type Result_3 = 
+ variant {
+   err: text;
+   ok: text;
+ };
+type Result_2 = 
+ variant {
+   err: text;
+   ok: DisputeCase;
+ };
+type Result_1 = 
+ variant {
+   err: text;
+   ok: DisputeVote;
+ };
+type Result = 
+ variant {
+   err: text;
+   ok;
+ };
+type MilestoneTranche = 
  record {
    amount_e8s: nat64;
    created_at: int;
@@ -55,17 +74,31 @@ type MilestoneTranche =
    status: StewardStatus;
    steward: principal;
  };
-type StewardPolicySummary =
+type LoginResponse = 
  record {
-   governance_canister_id: principal;
-   required_signatures: nat;
-   telemetry_oracle_id: principal;
+   merit: nat;
+   message: text;
+   username: text;
+   wallet: text;
  };
-type Result = variant { ok: text; err: text };
-type DisputeTier = variant { Five; Seven; Nine; };
-type DisputeVote = variant { Approve; Reject; };
-type DisputeStatus = variant { Open; Voting; Resolved; };
-type DisputeCase =
+type DisputeVote = 
+ variant {
+   Approve;
+   Reject;
+ };
+type DisputeTier = 
+ variant {
+   Five;
+   Nine;
+   Seven;
+ };
+type DisputeStatus = 
+ variant {
+   Open;
+   Resolved;
+   Voting;
+ };
+type DisputeCase = 
  record {
    appealStake: nat;
    bountyId: nat;
@@ -74,33 +107,62 @@ type DisputeCase =
    jurors: vec principal;
    status: DisputeStatus;
    tier: DisputeTier;
-   votes: vec record { principal; DisputeVote; };
+   votes: vec record {
+                principal;
+                DisputeVote;
+              };
+ };
+type ChatMessage = 
+ record {
+   content: text;
+   role: text;
+ };
+type BountyValue = 
+ record {
+   current_reward: float64;
+   id: nat;
+ };
+type BountyPostResponse = 
+ record {
+   bounty_id: nat;
+   message: text;
  };
 service : {
-  appeal_dispute: (caseId: nat, nextTier: DisputeTier, newJurors: vec principal, stakeAmount: nat) -> (Result);
+  appeal_dispute: (caseId: nat, nextTier: DisputeTier, newJurors:
+   vec principal, stakeAmount: nat) -> (Result_4);
   approve_tranche: (trancheId: nat) -> (text);
   chat: (messages: vec ChatMessage) -> (text);
   check_for_deposits_and_mint_ckbtc: () -> (text);
   configure_ckbtc_canister: (canisterId: principal) -> (text);
-  configure_steward_policy: (governanceCanisterId_: principal, telemetryOracleId_: principal, requiredSignatures: nat) -> (StewardPolicySummary);
-  create_dispute: (bountyId: nat, claimant: principal, tier: DisputeTier, selectedJurors: vec principal) -> (Result);
-  create_tranche: (recipient: principal, partitionName: text, amountE8s: nat64, requiredTelemetryMetric: text) -> (MilestoneTranche);
-  execute_tranche_release: (trancheId: nat) -> (Result);
+  configure_steward_policy: (governanceCanisterId: principal,
+   telemetryOracleId: principal, requiredSignatures: nat) ->
+   (StewardPolicySummary);
+  createBounty: (description: text, base_reward: float64, urgency_coeff:
+   float64) -> (BountyPostResponse);
+  create_dispute: (bountyId: nat, claimant: principal, tier: DisputeTier,
+   selectedJurors: vec principal) -> (Result_4);
+  create_tranche: (recipient: principal, partitionName: text, amountE8s:
+   nat64, requiredTelemetryMetric: text) -> (MilestoneTranche);
+  execute_tranche_release: (trancheId: nat) -> (Result_3);
+  getBountyValue: (bountyId: nat) -> (vec BountyValue) query;
   getBtcDepositAddress: () -> (text);
-  is_ckbtc_canister_configured: () -> (bool) query;
   get_active_stewards: () -> (vec principal) query;
   get_commons_partitions: () -> (vec TreasuryPartitionSummary) query;
-  get_dispute_case: (caseId: nat) -> (Result) query;
-  get_dispute_verdict: (caseId: nat) -> (Result) query;
+  get_dispute_case: (caseId: nat) -> (Result_2) query;
+  get_dispute_verdict: (caseId: nat) -> (Result_1) query;
   get_steward_policy: () -> (StewardPolicySummary) query;
   get_tranches: () -> (vec MilestoneTranche) query;
   get_treasury_releases: () -> (vec TreasuryRelease) query;
+  is_ckbtc_canister_configured: () -> (bool) query;
   login_or_register: (username: Username) -> (LoginResponse);
-  record_telemetry_metric: (steward: principal, metric: text, isMet: bool) -> (text);
-  register_commons_partition: (name: text, kind: text, allocated: nat, memo: text) -> (TreasuryPartitionSummary);
+  record_telemetry_metric: (steward: principal, metric: text, isMet: 
+   bool) -> (text);
+  register_commons_partition: (name: text, kind: text, allocated: nat, memo:
+   text) -> (TreasuryPartitionSummary);
   register_steward: (steward: principal) -> (text);
+  release_treasury: (partitionName: text, amount: nat, memo: text) ->
+   (TreasuryActionResponse);
   revoke_tranche: (trancheId: nat) -> (text);
-  release_treasury: (partitionName: text, amount: nat, memo: text) -> (TreasuryActionResponse);
   submit_dispute_vote: (caseId: nat, vote: DisputeVote) -> (Result);
   unregister_steward: (steward: principal) -> (text);
 }
