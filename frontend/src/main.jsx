@@ -31,8 +31,9 @@ export { ShareBar, buildShareUrls };
 
 // ---- Chat Tab ----
 const ChatTab = () => {
-  const [chat, setChat] = useState([
-    { system_: { content: "I'm a sovereign AI agent living on the Internet Computer. Ask me anything." } }
+  const { t } = useTranslation();
+  const [chat, setChat] = useState(() => [
+    { system_: { content: t('chat.defaultWelcome', "I'm a sovereign AI agent living on the Internet Computer. Ask me anything.") } }
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -122,7 +123,7 @@ const ChatTab = () => {
     e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
     const userMessage = { user: { content: inputValue } };
-    setChat((prev) => [...prev, userMessage, { system_: { content: 'Thinking ...' } }]);
+    setChat((prev) => [...prev, userMessage, { system_: { content: t('chat.thinking', 'Thinking ...') } }]);
     setInputValue('');
     setIsLoading(true);
     askAgent(chat.slice(1).concat(userMessage));
@@ -139,11 +140,11 @@ const ChatTab = () => {
   return (
     <div className="flex h-full flex-col">
       <div className="border-b bg-white p-4">
-        <h2 className="text-lg font-semibold text-gray-700">🤖 Civic OS Agent</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t('chat.agentTitle', '🤖 Civic OS Agent')}</h2>
       </div>
       {chatHealth !== 'ok' && (
         <div className="bg-yellow-100 text-yellow-800 px-3 py-2 text-sm">
-          {chatHealth === 'down' ? 'Chat service unreachable. ' : 'Checking chat service… '}
+          {chatHealth === 'down' ? t('chat.unreachable', 'Chat service unreachable. ') : t('chat.checking', 'Checking chat service… ')}
           {chatHealthMsg}
         </div>
       )}
@@ -151,7 +152,7 @@ const ChatTab = () => {
         {chat.map((message, index) => {
           const isUser = 'user' in message;
           const img = isUser ? userImg : botImg;
-          const name = isUser ? 'User' : 'System';
+          const name = isUser ? t('chat.user', 'User') : t('chat.system', 'System');
           const text = isUser ? message.user.content : (message.system_?.content ?? message.system?.content ?? '');
           return (
             <div key={index} className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
@@ -172,17 +173,17 @@ const ChatTab = () => {
         <input
           type="text"
           className="flex-1 rounded border p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:rounded-l sm:rounded-r-none"
-          placeholder="Ask anything ..."
+          placeholder={t('chat.placeholder', 'Ask anything ...')}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           disabled={isLoading}
         />
         <button type="submit" className="w-full rounded bg-blue-500 p-2 text-white hover:bg-blue-600 disabled:bg-blue-300 sm:w-auto sm:rounded-r sm:rounded-l-none" disabled={isLoading}>
-          Send
+          {t('chat.send', 'Send')}
         </button>
       </form>
       <div className="px-4 pb-2">
-        <ShareBar title="Civic OS Chat" text="Ask the Civic OS sovereign AI agent" />
+        <ShareBar title={t('share.chatTitle', 'Civic OS Chat')} text={t('share.chatText', 'Ask the Civic OS sovereign AI agent')} />
       </div>
     </div>
   );
@@ -190,6 +191,7 @@ const ChatTab = () => {
 
 // ---- Bounties Tab ----
 const BountiesTab = () => {
+  const { t } = useTranslation();
   const [description, setDescription] = useState('');
   const [baseReward, setBaseReward] = useState('');
   const [urgency, setUrgency] = useState('0.05');
@@ -199,13 +201,13 @@ const BountiesTab = () => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    setStatus('Creating bounty…');
+    setStatus(t('bounties.creating', 'Creating bounty…'));
     try {
       const res = await backend.createBounty(description, parseFloat(baseReward), parseFloat(urgency));
       setStatus(`✅ ${res.message} (ID: ${res.bounty_id})`);
       setDescription(''); setBaseReward(''); setUrgency('0.05');
     } catch (err) {
-      setStatus(`❌ Error: ${String(err)}`);
+      setStatus(`❌ ${t('common.error', 'Error')}: ${String(err)}`);
     }
   };
 
@@ -214,44 +216,45 @@ const BountiesTab = () => {
     setResult(null);
     try {
       const res = await backend.getBountyValue(BigInt(queryId));
-      if (res.length === 0) { setResult('Bounty not found.'); return; }
+      if (res.length === 0) { setResult(t('bounties.notFound', 'Bounty not found.')); return; }
       const { id, current_reward } = res[0];
-      setResult(`Bounty #${id} — current reward: ${current_reward.toFixed(2)}`);
+      setResult(t('bounties.currentValue', { id, reward: current_reward.toFixed(2) }, `Bounty #${id} — current reward: ${current_reward.toFixed(2)}`));
     } catch (err) {
-      setResult(`❌ Error: ${String(err)}`);
+      setResult(`❌ ${t('common.error', 'Error')}: ${String(err)}`);
     }
   };
 
   return (
     <div className="space-y-6 p-3 sm:p-4">
       <div>
-        <h2 className="text-lg font-semibold text-gray-700">Post a Bounty</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t('bounties.postTitle', 'Post a Bounty')}</h2>
       </div>
       <form onSubmit={handleCreate} className="space-y-3">
-        <input className="w-full rounded border p-2" placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} required />
-        <input className="w-full rounded border p-2" type="number" placeholder="Base reward (e.g. 100)" value={baseReward} onChange={(e) => setBaseReward(e.target.value)} required />
-        <input className="w-full rounded border p-2" type="number" step="0.01" placeholder="Urgency coefficient (default 0.05)" value={urgency} onChange={(e) => setUrgency(e.target.value)} />
-        <button type="submit" className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">Post Bounty</button>
+        <input className="w-full rounded border p-2" placeholder={t('bounties.descPlaceholder', 'Description')} value={description} onChange={(e) => setDescription(e.target.value)} required />
+        <input className="w-full rounded border p-2" type="number" placeholder={t('bounties.rewardPlaceholder', 'Base reward (e.g. 100)')} value={baseReward} onChange={(e) => setBaseReward(e.target.value)} required />
+        <input className="w-full rounded border p-2" type="number" step="0.01" placeholder={t('bounties.urgencyPlaceholder', 'Urgency coefficient (default 0.05)')} value={urgency} onChange={(e) => setUrgency(e.target.value)} />
+        <button type="submit" className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">{t('bounties.postBtn', 'Post Bounty')}</button>
       </form>
       {status && <p className="text-sm text-gray-600">{status}</p>}
 
       <hr />
       <div>
-        <h2 className="text-lg font-semibold text-gray-700">Check Current Value</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t('bounties.checkTitle', 'Check Current Value')}</h2>
       </div>
       <form onSubmit={handleQuery} className="flex gap-2">
-        <input className="flex-1 rounded border p-2" type="number" placeholder="Bounty ID" value={queryId} onChange={(e) => setQueryId(e.target.value)} required />
-        <button type="submit" className="rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600">Check</button>
+        <input className="flex-1 rounded border p-2" type="number" placeholder={t('bounties.bountyIdPlaceholder', 'Bounty ID')} value={queryId} onChange={(e) => setQueryId(e.target.value)} required />
+        <button type="submit" className="rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600">{t('bounties.checkBtn', 'Check')}</button>
       </form>
       {result && <p className="text-sm text-gray-600">{result}</p>}
       
-      <ShareBar title="Civic OS Bounties" text="Post or check bounties on The Civic OS" />
+      <ShareBar title={t('share.bountiesTitle', 'Civic OS Bounties')} text={t('share.bountiesText', 'Post or check bounties on The Civic OS')} />
     </div>
   );
 };
 
 // ---- Audit Tab ----
 const AuditTab = () => {
+  const { t } = useTranslation();
   const [proofHash, setProofHash] = useState('');
   const [actionType, setActionType] = useState('');
   const [log, setLog] = useState([]);
@@ -259,13 +262,13 @@ const AuditTab = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitStatus('Submitting…');
+    setSubmitStatus(t('audit.submitting', 'Submitting…'));
     try {
       const res = await backend.privateAction(proofHash, actionType);
       setSubmitStatus(`✅ ${res.message}`);
       setProofHash(''); setActionType('');
     } catch (err) {
-      setSubmitStatus(`❌ Error: ${String(err)}`);
+      setSubmitStatus(`❌ ${t('common.error', 'Error')}: ${String(err)}`);
     }
   };
 
@@ -281,24 +284,24 @@ const AuditTab = () => {
   return (
     <div className="space-y-6 p-3 sm:p-4">
       <div>
-        <h2 className="text-lg font-semibold text-gray-700">Submit Private Action (ZK-Proof)</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t('audit.submitTitle', 'Submit Private Action (ZK-Proof)')}</h2>
       </div>
       <form onSubmit={handleSubmit} className="space-y-3">
-        <input className="w-full rounded border p-2" placeholder="Proof hash (sha256 of your action)" value={proofHash} onChange={(e) => setProofHash(e.target.value)} required />
-        <input className="w-full rounded border p-2" placeholder="Action type (e.g. vote, spend)" value={actionType} onChange={(e) => setActionType(e.target.value)} required />
-        <button type="submit" className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">Submit</button>
+        <input className="w-full rounded border p-2" placeholder={t('audit.proofPlaceholder', 'Proof hash (sha256 of your action)')} value={proofHash} onChange={(e) => setProofHash(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder={t('audit.actionPlaceholder', 'Action type (e.g. vote, spend)')} value={actionType} onChange={(e) => setActionType(e.target.value)} required />
+        <button type="submit" className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">{t('audit.submitBtn', 'Submit')}</button>
       </form>
       {submitStatus && <p className="text-sm text-gray-600">{submitStatus}</p>}
 
       <hr />
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-700">Public Audit Log</h2>
+          <h2 className="text-lg font-semibold text-gray-700">{t('audit.logTitle', 'Public Audit Log')}</h2>
         </div>
-        <button onClick={handleFetchLog} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
+        <button onClick={handleFetchLog} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">{t('common.refresh', 'Refresh')}</button>
       </div>
       {log.length === 0
-        ? <p className="text-sm text-gray-500">No entries yet.</p>
+        ? <p className="text-sm text-gray-500">{t('audit.empty', 'No entries yet.')}</p>
         : <ul className="space-y-2 text-sm">
             {log.map((entry, i) => (
               <li key={i} className="rounded bg-gray-50 p-2">
@@ -309,13 +312,14 @@ const AuditTab = () => {
             ))}
           </ul>
       }
-      <ShareBar title="Civic OS Audit" text="Public audit log and zk-actions on The Civic OS" />
+      <ShareBar title={t('share.auditTitle', 'Civic OS Audit')} text={t('share.auditText', 'Public audit log and zk-actions on The Civic OS')} />
     </div>
   );
 };
 
 // ---- Justice Tab ----
 const JusticeTab = () => {
+  const { t } = useTranslation();
   const [plaintiff, setPlaintiff] = useState('');
   const [defendant, setDefendant] = useState('');
   const [category, setCategory] = useState('');
@@ -336,13 +340,13 @@ const JusticeTab = () => {
 
   const handleFileCase = async (e) => {
     e.preventDefault();
-    setCaseResult('Filing case…');
+    setCaseResult(t('justice.filing', 'Filing case…'));
     try {
       const res = await backend.fileCase(plaintiff, defendant, category, evidence);
-      setCaseResult(`✅ Case #${res.case_id} filed. Jurors: ${res.jury.join(', ')}`);
+      setCaseResult(t('justice.caseFiled', { caseId: res.case_id, jurors: res.jury.join(', ') }, `✅ Case #${res.case_id} filed. Jurors: ${res.jury.join(', ')}`));
       setPlaintiff(''); setDefendant(''); setCategory(''); setEvidence('');
     } catch (err) {
-      setCaseResult(`❌ Error: ${String(err)}`);
+      setCaseResult(`❌ ${t('common.error', 'Error')}: ${String(err)}`);
     }
   };
 
@@ -352,7 +356,7 @@ const JusticeTab = () => {
       const res = await backend.initiateAppeal(BigInt(appealCaseId));
       setAppealResult(res);
     } catch (err) {
-      setAppealResult("Error: " + err.message);
+      setAppealResult(`${t('common.error', 'Error')}: ` + err.message);
     }
   };
 
@@ -362,80 +366,81 @@ const JusticeTab = () => {
       const res = await backend.executeCivicFork(BigInt(forkProposalId), BigInt(forkSignatories), forkWallet, forkCodeBase);
       setForkResult(res);
     } catch (err) {
-      setForkResult("Error: " + err.message);
+      setForkResult(`${t('common.error', 'Error')}: ` + err.message);
     }
   };
 
   const handleCastVerdict = async (e) => {
     e.preventDefault();
-    setVerdictResult('Casting verdict…');
+    setVerdictResult(t('justice.castingVerdict', 'Casting verdict…'));
     try {
       const res = await backend.castVerdict(BigInt(caseId), jurorName, verdict);
-      if (res.length === 0) { setVerdictResult('❌ Unauthorized juror or case not found.'); return; }
+      if (res.length === 0) { setVerdictResult(`❌ ${t('justice.unauthorizedJuror', 'Unauthorized juror or case not found.')}`); return; }
       setVerdictResult(`✅ ${res[0].message} — verdict: ${res[0].verdict}`);
       setCaseId(''); setJurorName(''); setVerdict('');
     } catch (err) {
-      setVerdictResult(`❌ Error: ${String(err)}`);
+      setVerdictResult(`❌ ${t('common.error', 'Error')}: ${String(err)}`);
     }
   };
 
   return (
     <div className="space-y-6 p-3 sm:p-4">
       <div>
-        <h2 className="text-lg font-semibold text-gray-700">File a Case</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t('justice.fileCaseTitle', 'File a Case')}</h2>
       </div>
       <form onSubmit={handleFileCase} className="space-y-3">
-        <input className="w-full rounded border p-2" placeholder="Plaintiff" value={plaintiff} onChange={(e) => setPlaintiff(e.target.value)} required />
-        <input className="w-full rounded border p-2" placeholder="Defendant" value={defendant} onChange={(e) => setDefendant(e.target.value)} required />
-        <input className="w-full rounded border p-2" placeholder="Category (e.g. Energy, Contract)" value={category} onChange={(e) => setCategory(e.target.value)} required />
-        <textarea className="w-full rounded border p-2" placeholder="Evidence (hashed on-chain)" value={evidence} onChange={(e) => setEvidence(e.target.value)} required />
-        <button type="submit" className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600">File Case</button>
+        <input className="w-full rounded border p-2" placeholder={t('justice.plaintiffPlaceholder', 'Plaintiff')} value={plaintiff} onChange={(e) => setPlaintiff(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder={t('justice.defendantPlaceholder', 'Defendant')} value={defendant} onChange={(e) => setDefendant(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder={t('justice.categoryPlaceholder', 'Category (e.g. Energy, Contract)')} value={category} onChange={(e) => setCategory(e.target.value)} required />
+        <textarea className="w-full rounded border p-2" placeholder={t('justice.evidencePlaceholder', 'Evidence (hashed on-chain)')} value={evidence} onChange={(e) => setEvidence(e.target.value)} required />
+        <button type="submit" className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600">{t('justice.fileCaseBtn', 'File Case')}</button>
       </form>
       {caseResult && <p className="text-sm text-gray-600">{caseResult}</p>}
 
       <hr />
       <div>
-        <h2 className="text-lg font-semibold text-gray-700">Cast Verdict</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t('justice.castVerdictTitle', 'Cast Verdict')}</h2>
       </div>
       <form onSubmit={handleCastVerdict} className="space-y-3">
-        <input className="w-full rounded border p-2" type="number" placeholder="Case ID" value={caseId} onChange={(e) => setCaseId(e.target.value)} required />
-        <input className="w-full rounded border p-2" placeholder="Juror name" value={jurorName} onChange={(e) => setJurorName(e.target.value)} required />
-        <input className="w-full rounded border p-2" placeholder="Verdict (e.g. guilty, not-guilty)" value={verdict} onChange={(e) => setVerdict(e.target.value)} required />
-        <button type="submit" className="rounded bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600">Cast Verdict</button>
+        <input className="w-full rounded border p-2" type="number" placeholder={t('justice.caseIdPlaceholder', 'Case ID')} value={caseId} onChange={(e) => setCaseId(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder={t('justice.jurorNamePlaceholder', 'Juror name')} value={jurorName} onChange={(e) => setJurorName(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder={t('justice.verdictPlaceholder', 'Verdict (e.g. guilty, not-guilty)')} value={verdict} onChange={(e) => setVerdict(e.target.value)} required />
+        <button type="submit" className="rounded bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600">{t('justice.castVerdictBtn', 'Cast Verdict')}</button>
       </form>
       {verdictResult && <p className="text-sm text-gray-600">{verdictResult}</p>}
 
       <hr />
       <div>
-        <h2 className="text-lg font-semibold text-gray-700">Initiate Appeal</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t('justice.initiateAppealTitle', 'Initiate Appeal')}</h2>
       </div>
       <form onSubmit={handleAppeal} className="space-y-3">
-        <input className="w-full rounded border p-2" type="number" placeholder="Case ID" value={appealCaseId} onChange={(e) => setAppealCaseId(e.target.value)} required />
-        <button type="submit" className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">Initiate Appeal</button>
+        <input className="w-full rounded border p-2" type="number" placeholder={t('justice.caseIdPlaceholder', 'Case ID')} value={appealCaseId} onChange={(e) => setAppealCaseId(e.target.value)} required />
+        <button type="submit" className="rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600">{t('justice.initiateAppealBtn', 'Initiate Appeal')}</button>
       </form>
       {appealResult && <p className="text-sm text-gray-600">{appealResult}</p>}
 
       <hr />
       <div>
-        <h2 className="text-lg font-semibold text-gray-700">Execute Civic Fork</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t('justice.executeForkTitle', 'Execute Civic Fork')}</h2>
       </div>
       <form onSubmit={handleExecuteFork} className="space-y-3">
-        <input className="w-full rounded border p-2" type="number" placeholder="Proposal ID" value={forkProposalId} onChange={(e) => setForkProposalId(e.target.value)} required />
-        <input className="w-full rounded border p-2" type="number" placeholder="Signatories Count" value={forkSignatories} onChange={(e) => setForkSignatories(e.target.value)} required />
-        <input className="w-full rounded border p-2" placeholder="New Wallet Address" value={forkWallet} onChange={(e) => setForkWallet(e.target.value)} required />
-        <input className="w-full rounded border p-2" placeholder="New Code Base URL" value={forkCodeBase} onChange={(e) => setForkCodeBase(e.target.value)} required />
-        <button type="submit" className="rounded bg-purple-500 px-4 py-2 text-white hover:bg-purple-600">Execute Fork</button>
+        <input className="w-full rounded border p-2" type="number" placeholder={t('justice.proposalIdPlaceholder', 'Proposal ID')} value={forkProposalId} onChange={(e) => setForkProposalId(e.target.value)} required />
+        <input className="w-full rounded border p-2" type="number" placeholder={t('justice.signatoriesPlaceholder', 'Signatories Count')} value={forkSignatories} onChange={(e) => setForkSignatories(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder={t('justice.newWalletPlaceholder', 'New Wallet Address')} value={forkWallet} onChange={(e) => setForkWallet(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder={t('justice.newCodeBasePlaceholder', 'New Code Base URL')} value={forkCodeBase} onChange={(e) => setForkCodeBase(e.target.value)} required />
+        <button type="submit" className="rounded bg-purple-500 px-4 py-2 text-white hover:bg-purple-600">{t('justice.executeForkBtn', 'Execute Fork')}</button>
       </form>
       {forkResult && <p className="text-sm text-gray-600">{forkResult}</p>}
 
 
-      <ShareBar title="Civic OS Justice" text="File a case or cast a verdict on The Civic OS" />
+      <ShareBar title={t('share.justiceTitle', 'Civic OS Justice')} text={t('share.justiceText', 'File a case or cast a verdict on The Civic OS')} />
     </div>
   );
 };
 
 // ---- Membership Tab ----
 const MembershipTab = () => {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [role, setRole] = useState('Citizen');
@@ -450,36 +455,41 @@ const MembershipTab = () => {
   const handleEnroll = async (e) => {
     e.preventDefault();
     if (!consent) {
-      setEnrollStatus('❌ You must agree to the Civic Commons Participation Agreement.');
+      setEnrollStatus(`❌ ${t('membership.consentRequired', 'You must agree to the Civic Commons Participation Agreement.')}`);
       return;
     }
-    setEnrollStatus('Enrolling…');
+    setEnrollStatus(t('membership.enrolling', 'Enrolling…'));
     try {
       const res = await backend.enrollMember(name, bio, role);
       setEnrollStatus(res.ok ? `✅ ${res.message}` : `❌ ${res.message}`);
       if (res.ok) { setName(''); setBio(''); setRole('Citizen'); setConsent(false); }
     } catch (err) {
-      setEnrollStatus(`❌ Error: ${String(err)}`);
+      setEnrollStatus(`❌ ${t('common.error', 'Error')}: ${String(err)}`);
     }
   };
 
   const handleLookup = async (e) => {
     e.preventDefault();
-    setProfile('Loading…');
+    setProfile(t('common.loading', 'Loading…'));
     try {
       const res = await backend.getMember(lookupName);
-      if (res.length === 0) { setProfile(null); setEnrollStatus('❌ Member not found.'); return; }
+      if (res.length === 0) { setProfile(null); setEnrollStatus(`❌ ${t('membership.memberNotFound', 'Member not found.')}`); return; }
       setProfile(res[0]);
       setLookupName('');
     } catch (err) {
       setProfile(null);
-      setEnrollStatus(`❌ Error: ${String(err)}`);
+      setEnrollStatus(`❌ ${t('common.error', 'Error')}: ${String(err)}`);
     }
   };
 
   const fetchMembers = async () => {
     try { setMembers(await backend.listMembers()); }
     catch { setMembers([]); }
+  };
+
+  const getRoleLabel = (r) => {
+    const key = (r || '').toLowerCase();
+    return t(`membership.roles.${key}`, r);
   };
 
   const roleColor = (r) => {
@@ -492,72 +502,72 @@ const MembershipTab = () => {
   return (
     <div className="space-y-6 p-3 sm:p-4">
       <div>
-        <h2 className="text-lg font-semibold text-gray-700">🪪 Enroll as a Citizen</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t('membership.enrollTitle', '🪪 Enroll as a Citizen')}</h2>
       </div>
       <form onSubmit={handleEnroll} className="space-y-4">
-        <input className="w-full rounded border p-2" placeholder="Name (unique handle)" value={name} onChange={(e) => setName(e.target.value)} required />
-        <textarea className="w-full rounded border p-2" rows={2} placeholder="Bio" value={bio} onChange={(e) => setBio(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder={t('membership.namePlaceholder', 'Name (unique handle)')} value={name} onChange={(e) => setName(e.target.value)} required />
+        <textarea className="w-full rounded border p-2" rows={2} placeholder={t('membership.bioPlaceholder', 'Bio')} value={bio} onChange={(e) => setBio(e.target.value)} required />
         <select className="w-full rounded border p-2" value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="Citizen">Citizen</option>
-          <option value="Scholar">Scholar</option>
-          <option value="Builder">Builder</option>
-          <option value="Steward">Steward</option>
+          <option value="Citizen">{t('membership.roles.citizen', 'Citizen')}</option>
+          <option value="Scholar">{t('membership.roles.scholar', 'Scholar')}</option>
+          <option value="Builder">{t('membership.roles.builder', 'Builder')}</option>
+          <option value="Steward">{t('membership.roles.steward', 'Steward')}</option>
         </select>
 
         <div className="rounded border bg-white p-3 text-sm">
-          <label className="block font-medium text-gray-700 mb-1">Government Issued ID (Verification)</label>
+          <label className="block font-medium text-gray-700 mb-1">{t('membership.govIdLabel', 'Government Issued ID (Verification)')}</label>
           <input type="file" accept="image/*,.pdf" className="w-full text-gray-600 mb-3" required />
 
-          <label className="block font-medium text-gray-700 mb-1">Snap Live Photo (Record of Enrollee)</label>
+          <label className="block font-medium text-gray-700 mb-1">{t('membership.livePhotoLabel', 'Snap Live Photo (Record of Enrollee)')}</label>
           <input type="file" accept="image/*" capture="user" className="w-full text-gray-600" required />
         </div>
 
         <div className="rounded border bg-gray-50 p-4 text-xs text-gray-700 space-y-2 h-48 overflow-y-auto">
-          <h3 className="font-bold text-sm">Member Consent: Civic Commons Participation Agreement</h3>
-          <p><strong>1. Acknowledgment of Open Source Principles</strong><br />
-          By enrolling as a member of the Civic Commons, I acknowledge that I am entering a collaborative environment governed by the principles of Opensourcism. I understand that the source code, data, and documentation provided are collective assets designed for the public good.</p>
-          <p><strong>2. Agreement to Abide by the "Source Code" Rules</strong><br />
-          I hereby agree to strictly adhere to the governing rules embedded within the project’s source code and its associated licenses (e.g., MIT, GNU GPL, or Creative Commons). This includes, but is not limited to:
+          <h3 className="font-bold text-sm">{t('membership.agreementTitle', 'Member Consent: Civic Commons Participation Agreement')}</h3>
+          <p><strong>{t('membership.terms.sec1Title', '1. Acknowledgment of Open Source Principles')}</strong><br />
+          {t('membership.terms.sec1Text', 'By enrolling as a member of the Civic Commons, I acknowledge that I am entering a collaborative environment governed by the principles of Opensourcism. I understand that the source code, data, and documentation provided are collective assets designed for the public good.')}</p>
+          <p><strong>{t('membership.terms.sec2Title', '2. Agreement to Abide by the "Source Code" Rules')}</strong><br />
+          {t('membership.terms.sec2Text', 'I hereby agree to strictly adhere to the governing rules embedded within the project’s source code and its associated licenses (e.g., MIT, GNU GPL, or Creative Commons). This includes, but is not limited to:')}
           <ul className="list-disc ml-5 mt-1 space-y-1">
-            <li>Attribution: Giving proper credit to original authors and contributors.</li>
-            <li>Transparency: Documenting all modifications and ensuring they remain accessible to the community.</li>
-            <li>Reciprocity: Sharing improvements back to the main branch to ensure the "Civic Commons" continues to grow.</li>
+            <li>{t('membership.terms.sec2Item1', 'Attribution: Giving proper credit to original authors and contributors.')}</li>
+            <li>{t('membership.terms.sec2Item2', 'Transparency: Documenting all modifications and ensuring they remain accessible to the community.')}</li>
+            <li>{t('membership.terms.sec2Item3', 'Reciprocity: Sharing improvements back to the main branch to ensure the "Civic Commons" continues to grow.')}</li>
           </ul>
           </p>
-          <p><strong>3. Code of Conduct</strong><br />
-          I pledge to maintain a respectful, inclusive, and constructive environment. I understand that my contributions must be free of malicious intent, security vulnerabilities (to the best of my knowledge), and discriminatory content.</p>
-          <p><strong>4. Liability and Ownership</strong><br />
-          I understand that all contributions are made at my own discretion. While I retain the moral rights to my specific contributions, I grant the Civic Commons a perpetual, irrevocable license to use, modify, and distribute my work under the platform’s chosen open-source framework.</p>
-          <p><strong>5. Formal Declaration</strong><br />
-          "I, the undersigned, have read and understood the protocols of civic-so-opensourcism.cloud. I agree to abide by the digital and ethical 'source code' of this community. I accept that failure to comply with these shared rules may result in the suspension of my membership and access to the commons."</p>
+          <p><strong>{t('membership.terms.sec3Title', '3. Code of Conduct')}</strong><br />
+          {t('membership.terms.sec3Text', 'I pledge to maintain a respectful, inclusive, and constructive environment. I understand that my contributions must be free of malicious intent, security vulnerabilities (to the best of my knowledge), and discriminatory content.')}</p>
+          <p><strong>{t('membership.terms.sec4Title', '4. Liability and Ownership')}</strong><br />
+          {t('membership.terms.sec4Text', 'I understand that all contributions are made at my own discretion. While I retain the moral rights to my specific contributions, I grant the Civic Commons a perpetual, irrevocable license to use, modify, and distribute my work under the platform’s chosen open-source framework.')}</p>
+          <p><strong>{t('membership.terms.sec5Title', '5. Formal Declaration')}</strong><br />
+          {t('membership.terms.sec5Text', '"I, the undersigned, have read and understood the protocols of civic-so-opensourcism.cloud. I agree to abide by the digital and ethical \'source code\' of this community. I accept that failure to comply with these shared rules may result in the suspension of my membership and access to the commons."')}</p>
         </div>
         <label className="flex items-start gap-2 text-sm text-gray-800 cursor-pointer">
           <input type="checkbox" className="mt-1" checked={consent} onChange={(e) => setConsent(e.target.checked)} required />
-          <span>I agree to the Civic Commons Participation Agreement and Formal Declaration</span>
+          <span>{t('membership.consentCheckbox', 'I agree to the Civic Commons Participation Agreement and Formal Declaration')}</span>
         </label>
 
-        <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">Enroll</button>
+        <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">{t('membership.enrollBtn', 'Enroll')}</button>
       </form>
       {enrollStatus && <p className="text-sm text-gray-600">{enrollStatus}</p>}
 
       <hr />
 
       <div>
-        <h2 className="text-lg font-semibold text-gray-700">🔍 Lookup Member</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t('membership.lookupTitle', '🔍 Lookup Member')}</h2>
       </div>
       <form onSubmit={handleLookup} className="flex gap-2">
-        <input className="flex-1 rounded border p-2" placeholder="Member name" value={lookupName} onChange={(e) => setLookupName(e.target.value)} required />
-        <button type="submit" className="rounded bg-gray-600 px-3 py-2 text-white hover:bg-gray-700">Search</button>
+        <input className="flex-1 rounded border p-2" placeholder={t('membership.memberNamePlaceholder', 'Member name')} value={lookupName} onChange={(e) => setLookupName(e.target.value)} required />
+        <button type="submit" className="rounded bg-gray-600 px-3 py-2 text-white hover:bg-gray-700">{t('common.search', 'Search')}</button>
       </form>
       {profile && typeof profile === 'object' && (
         <div className="rounded border p-3 text-sm">
           <div className="flex items-center gap-2">
             <span className="text-lg font-bold">{profile.name}</span>
-            <span className={`rounded px-2 py-0.5 text-xs ${roleColor(profile.role)}`}>{profile.role}</span>
+            <span className={`rounded px-2 py-0.5 text-xs ${roleColor(profile.role)}`}>{getRoleLabel(profile.role)}</span>
           </div>
           <p className="mt-1 text-gray-600">{profile.bio}</p>
           <p className="mt-1 text-xs text-gray-400">
-            Merit: <strong>{Number(profile.merit)}</strong> · Active: {profile.is_active ? '✅' : '❌'}
+            {t('membership.merit', 'Merit:')} <strong>{Number(profile.merit)}</strong> · {t('membership.active', 'Active:')} {profile.is_active ? '✅' : '❌'}
           </p>
         </div>
       )}
@@ -566,30 +576,31 @@ const MembershipTab = () => {
 
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-700">👥 All Members</h2>
+          <h2 className="text-lg font-semibold text-gray-700">{t('membership.allMembersTitle', '👥 All Members')}</h2>
         </div>
-        <button onClick={fetchMembers} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
+        <button onClick={fetchMembers} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">{t('common.refresh', 'Refresh')}</button>
       </div>
       {members.length === 0
-        ? <p className="text-sm text-gray-500">No members yet — click Refresh to load.</p>
+        ? <p className="text-sm text-gray-500">{t('membership.noMembers', 'No members yet — click Refresh to load.')}</p>
         : <ul className="space-y-2">
             {members.map((m) => (
               <li key={m.name} className="flex items-center gap-2 rounded border p-2 text-sm">
                 <span className="font-semibold">{m.name}</span>
-                <span className={`rounded px-2 py-0.5 text-xs ${roleColor(m.role)}`}>{m.role}</span>
-                <span className="ml-auto text-xs text-gray-400">Merit: {Number(m.merit)}</span>
+                <span className={`rounded px-2 py-0.5 text-xs ${roleColor(m.role)}`}>{getRoleLabel(m.role)}</span>
+                <span className="ml-auto text-xs text-gray-400">{t('membership.merit', 'Merit:')} {Number(m.merit)}</span>
               </li>
             ))}
           </ul>
       }
 
-      <ShareBar title="Civic OS Membership" text="Enroll as a citizen and explore membership on The Civic OS" />
+      <ShareBar title={t('share.membershipTitle', 'Civic OS Membership')} text={t('share.membershipText', 'Enroll as a citizen and explore membership on The Civic OS')} />
     </div>
   );
 };
 
 // ---- Knowledge Commons Tab ----
 const KnowledgeCommonsTab = () => {
+  const { t } = useTranslation();
   // Skill commits
   const [scMember, setScMember] = useState('');
   const [scSkill, setScSkill] = useState('');
@@ -616,27 +627,27 @@ const KnowledgeCommonsTab = () => {
 
   const handleCommitSkill = async (e) => {
     e.preventDefault();
-    setScStatus('Committing…');
+    setScStatus(t('commons.committing', 'Committing…'));
     try {
       const res = await backend.commitSkill(scMember, scSkill, scEvidence);
-      if (res.length === 0) { setScStatus('❌ Member not enrolled.'); return; }
+      if (res.length === 0) { setScStatus(`❌ ${t('commons.memberNotEnrolled', 'Member not enrolled.')}`); return; }
       setScStatus(`✅ ${res[0].message} (Skill #${res[0].skill_id})`);
       setScMember(''); setScSkill(''); setScEvidence('');
     } catch (err) {
-      setScStatus(`❌ Error: ${String(err)}`);
+      setScStatus(`❌ ${t('common.error', 'Error')}: ${String(err)}`);
     }
   };
 
   const handleEndorse = async (e) => {
     e.preventDefault();
-    setEndorseStatus('Endorsing…');
+    setEndorseStatus(t('commons.endorsing', 'Endorsing…'));
     try {
       const res = await backend.endorseSkill(BigInt(endorseId), endorser);
-      if (res.length === 0) { setEndorseStatus('❌ Skill not found, already endorsed, or self-endorse.'); return; }
-      setEndorseStatus(`✅ ${res[0].message} (${res[0].endorsement_count} endorsement(s))`);
+      if (res.length === 0) { setEndorseStatus(`❌ ${t('commons.endorseError', 'Skill not found, already endorsed, or self-endorse.')}`); return; }
+      setEndorseStatus(`✅ ${t('commons.endorseSuccess', { message: res[0].message, count: res[0].endorsement_count }, `${res[0].message} (${res[0].endorsement_count} endorsement(s))`)}`);
       setEndorseId(''); setEndorser('');
     } catch (err) {
-      setEndorseStatus(`❌ Error: ${String(err)}`);
+      setEndorseStatus(`❌ ${t('common.error', 'Error')}: ${String(err)}`);
     }
   };
 
@@ -648,13 +659,13 @@ const KnowledgeCommonsTab = () => {
 
   const handlePublish = async (e) => {
     e.preventDefault();
-    setRsStatus('Publishing…');
+    setRsStatus(t('commons.publishing', 'Publishing…'));
     try {
       const res = await backend.publishResearch(rsTitle, rsAuthor, rsAbstract, rsData, rsDomain);
       setRsStatus(`✅ ${res.message} (Research #${res.research_id})`);
       setRsTitle(''); setRsAuthor(''); setRsAbstract(''); setRsData(''); setRsDomain('');
     } catch (err) {
-      setRsStatus(`❌ Error: ${String(err)}`);
+      setRsStatus(`❌ ${t('common.error', 'Error')}: ${String(err)}`);
     }
   };
 
@@ -675,7 +686,8 @@ const KnowledgeCommonsTab = () => {
     </button>
   );
 
-  const AI_CHARTER = [
+  const rawCharter = t('commons.articles');
+  const articlesList = Array.isArray(rawCharter) ? rawCharter : [
     { title: 'Preamble', text: 'Humans are the originators of meaning; AI is a tool of augmentation. Synthetic intelligence must adhere to Transparency, Modularity, and Human Sovereignty.' },
     { title: 'Art. I — Transparency of Origin', text: '1.1 The Turing Disclosure: No AI may masquerade as a human.\n1.2 Data Provenance: Humans have the right to know what data an AI model was trained on.' },
     { title: 'Art. II — Audit-ability of Thought', text: '2.1 No "Black Boxes" in critical infrastructure (justice, healthcare, lending, military).\n2.2 Explainability: weights and biases must be audit-able by any citizen.' },
@@ -686,13 +698,13 @@ const KnowledgeCommonsTab = () => {
   return (
     <div className="flex flex-col h-full">
       <div className="border-b bg-white p-3">
-        <h2 className="text-lg font-semibold text-gray-700">🌐 Knowledge Commons</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t('commons.title', '🌐 Knowledge Commons')}</h2>
       </div>
       {/* Sub-tabs */}
       <div className="flex border-b">
-        {sectionBtn('skills', '🎓 Skill Commits')}
-        {sectionBtn('science', '🔬 Open Science')}
-        {sectionBtn('charter', '📜 AI Charter')}
+        {sectionBtn('skills', t('commons.tabs.skills', '🎓 Skill Commits'))}
+        {sectionBtn('science', t('commons.tabs.science', '🔬 Open Science'))}
+        {sectionBtn('charter', t('commons.tabs.charter', '📜 AI Charter'))}
       </div>
 
       <div className="overflow-y-auto p-3 sm:p-4 space-y-6">
@@ -700,42 +712,41 @@ const KnowledgeCommonsTab = () => {
         {activeSection === 'skills' && (
           <>
             <div>
-              <h2 className="text-base font-semibold text-gray-700">Commit a Skill</h2>
+              <h2 className="text-base font-semibold text-gray-700">{t('commons.commitSkillTitle', 'Commit a Skill')}</h2>
             </div>
-            <p className="text-xs text-gray-400">Education is lifelong — every skill you master is a verifiable commit to the commons.</p>
+            <p className="text-xs text-gray-400">{t('commons.commitSkillSubtitle', 'Education is lifelong — every skill you master is a verifiable commit to the commons.')}</p>
             <form onSubmit={handleCommitSkill} className="space-y-3">
-              <input className="w-full rounded border p-2 text-sm" placeholder="Your member name" value={scMember} onChange={(e) => setScMember(e.target.value)} required />
-              <input className="w-full rounded border p-2 text-sm" placeholder="Skill (e.g. 'Motoko Smart Contracts')" value={scSkill} onChange={(e) => setScSkill(e.target.value)} required />
-              <textarea className="w-full rounded border p-2 text-sm" rows={2} placeholder="Evidence / portfolio link (hashed on-chain)" value={scEvidence} onChange={(e) => setScEvidence(e.target.value)} required />
-              <button type="submit" className="rounded bg-teal-600 px-4 py-2 text-white hover:bg-teal-700 text-sm">Commit Skill</button>
+              <input className="w-full rounded border p-2 text-sm" placeholder={t('commons.yourNamePlaceholder', 'Your member name')} value={scMember} onChange={(e) => setScMember(e.target.value)} required />
+              <input className="w-full rounded border p-2 text-sm" placeholder={t('commons.skillNamePlaceholder', "Skill (e.g. 'Motoko Smart Contracts')")} value={scSkill} onChange={(e) => setScSkill(e.target.value)} required />
+              <textarea className="w-full rounded border p-2 text-sm" rows={2} placeholder={t('commons.evidencePlaceholder', 'Evidence / portfolio link (hashed on-chain)')} value={scEvidence} onChange={(e) => setScEvidence(e.target.value)} required />
+              <button type="submit" className="rounded bg-teal-600 px-4 py-2 text-white hover:bg-teal-700 text-sm">{t('commons.commitSkillBtn', 'Commit Skill')}</button>
             </form>
             {scStatus && <p className="text-sm text-gray-600">{scStatus}</p>}
 
             <hr />
             <div>
-              <h2 className="text-base font-semibold text-gray-700">Endorse a Skill</h2>
+              <h2 className="text-base font-semibold text-gray-700">{t('commons.endorseSkillTitle', 'Endorse a Skill')}</h2>
             </div>
             <form onSubmit={handleEndorse} className="space-y-3">
-              <input className="w-full rounded border p-2 text-sm" type="number" placeholder="Skill Commit ID" value={endorseId} onChange={(e) => setEndorseId(e.target.value)} required />
-              <input className="w-full rounded border p-2 text-sm" placeholder="Endorser name" value={endorser} onChange={(e) => setEndorser(e.target.value)} required />
-              <button type="submit" className="rounded bg-orange-500 px-4 py-2 text-white hover:bg-orange-600 text-sm">Endorse</button>
+              <input className="w-full rounded border p-2 text-sm" type="number" placeholder={t('commons.skillIdPlaceholder', 'Skill Commit ID')} value={endorseId} onChange={(e) => setEndorseId(e.target.value)} required />
+              <input className="w-full rounded border p-2 text-sm" placeholder={t('commons.endorserNamePlaceholder', 'Endorser name')} value={endorser} onChange={(e) => setEndorser(e.target.value)} required />
+              <button type="submit" className="rounded bg-orange-500 px-4 py-2 text-white hover:bg-orange-600 text-sm">{t('commons.endorseBtn', 'Endorse')}</button>
             </form>
             {endorseStatus && <p className="text-sm text-gray-600">{endorseStatus}</p>}
 
             <hr />
             <div>
-              <h2 className="text-base font-semibold text-gray-700">Browse Skills</h2>
+              <h2 className="text-base font-semibold text-gray-700">{t('commons.browseSkillsTitle', 'Browse Skills')}</h2>
             </div>
             <form onSubmit={fetchSkills} className="flex gap-2">
-              <input className="flex-1 rounded border p-2 text-sm" placeholder="Member name" value={listMember} onChange={(e) => setListMember(e.target.value)} required />
-              <button type="submit" className="rounded bg-gray-200 px-3 py-2 text-sm hover:bg-gray-300">Load</button>
+              <input className="flex-1 rounded border p-2 text-sm" placeholder={t('membership.memberNamePlaceholder', 'Member name')} value={listMember} onChange={(e) => setListMember(e.target.value)} required />
+              <button type="submit" className="rounded bg-gray-200 px-3 py-2 text-sm hover:bg-gray-300">{t('commons.loadBtn', 'Load')}</button>
             </form>
             {skills.length === 0
-              ? <p className="text-sm text-gray-500">No skills loaded.</p>
+              ? <p className="text-sm text-gray-500">{t('commons.noSkills', 'No skills loaded.')}</p>
               : <ul className="space-y-2">
-                  {skills.map((s) => {
-                        return (
-                          <li key={Number(s.id)} className="rounded border p-3 text-sm">
+                  {skills.map((s) => (
+                    <li key={Number(s.id)} className="rounded border p-3 text-sm">
                       <div className="flex items-center justify-between">
                         <span className="font-semibold">{s.skill}</span>
                         <span className="text-xs text-gray-400">#{Number(s.id)}</span>
@@ -743,12 +754,11 @@ const KnowledgeCommonsTab = () => {
                       <p className="text-xs text-gray-400 mt-1 font-mono">{s.evidence_hash}</p>
                       <p className="text-xs text-gray-500 mt-1">
                         {s.endorsements.length > 0
-                          ? `✅ Endorsed by: ${s.endorsements.join(', ')}`
-                          : '— No endorsements yet'}
+                          ? `✅ ${t('commons.endorsedBy', 'Endorsed by:')} ${s.endorsements.join(', ')}`
+                          : t('commons.noEndorsements', '— No endorsements yet')}
                       </p>
                     </li>
-                        );
-                      })}
+                  ))}
                 </ul>
             }
           </>
@@ -758,37 +768,37 @@ const KnowledgeCommonsTab = () => {
         {activeSection === 'science' && (
           <>
             <div>
-              <h2 className="text-base font-semibold text-gray-700">Publish Research</h2>
+              <h2 className="text-base font-semibold text-gray-700">{t('commons.publishTitle', 'Publish Research')}</h2>
             </div>
-            <p className="text-xs text-gray-400">The Human Source Code — medicine and all public knowledge — belongs to no corporation. Publish openly.</p>
+            <p className="text-xs text-gray-400">{t('commons.publishSubtitle', 'The Human Source Code — medicine and all public knowledge — belongs to no corporation. Publish openly.')}</p>
             <form onSubmit={handlePublish} className="space-y-3">
-              <input className="w-full rounded border p-2 text-sm" placeholder="Title" value={rsTitle} onChange={(e) => setRsTitle(e.target.value)} required />
-              <input className="w-full rounded border p-2 text-sm" placeholder="Author" value={rsAuthor} onChange={(e) => setRsAuthor(e.target.value)} required />
+              <input className="w-full rounded border p-2 text-sm" placeholder={t('commons.titlePlaceholder', 'Title')} value={rsTitle} onChange={(e) => setRsTitle(e.target.value)} required />
+              <input className="w-full rounded border p-2 text-sm" placeholder={t('commons.authorPlaceholder', 'Author')} value={rsAuthor} onChange={(e) => setRsAuthor(e.target.value)} required />
               <select className="w-full rounded border p-2 text-sm" value={rsDomain} onChange={(e) => setRsDomain(e.target.value)} required>
-                <option value="">Domain…</option>
-                <option value="Medicine">Medicine</option>
-                <option value="Biology">Biology</option>
-                <option value="Physics">Physics</option>
-                <option value="Climate">Climate</option>
-                <option value="Computer Science">Computer Science</option>
-                <option value="Social Science">Social Science</option>
-                <option value="Other">Other</option>
+                <option value="">{t('commons.domainPlaceholder', 'Domain…')}</option>
+                <option value="Medicine">{t('commons.domains.Medicine', 'Medicine')}</option>
+                <option value="Biology">{t('commons.domains.Biology', 'Biology')}</option>
+                <option value="Physics">{t('commons.domains.Physics', 'Physics')}</option>
+                <option value="Climate">{t('commons.domains.Climate', 'Climate')}</option>
+                <option value="Computer Science">{t('commons.domains.ComputerScience', 'Computer Science')}</option>
+                <option value="Social Science">{t('commons.domains.SocialScience', 'Social Science')}</option>
+                <option value="Other">{t('commons.domains.Other', 'Other')}</option>
               </select>
-              <textarea className="w-full rounded border p-2 text-sm" rows={3} placeholder="Abstract" value={rsAbstract} onChange={(e) => setRsAbstract(e.target.value)} required />
-              <textarea className="w-full rounded border p-2 text-sm" rows={2} placeholder="Data / source link (content-addressed hash stored on-chain)" value={rsData} onChange={(e) => setRsData(e.target.value)} required />
-              <button type="submit" className="rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700 text-sm">Publish to Commons</button>
+              <textarea className="w-full rounded border p-2 text-sm" rows={3} placeholder={t('commons.abstractPlaceholder', 'Abstract')} value={rsAbstract} onChange={(e) => setRsAbstract(e.target.value)} required />
+              <textarea className="w-full rounded border p-2 text-sm" rows={2} placeholder={t('commons.dataPlaceholder', 'Data / source link (content-addressed hash stored on-chain)')} value={rsData} onChange={(e) => setRsData(e.target.value)} required />
+              <button type="submit" className="rounded bg-sky-600 px-4 py-2 text-white hover:bg-sky-700 text-sm">{t('commons.publishBtn', 'Publish to Commons')}</button>
             </form>
             {rsStatus && <p className="text-sm text-gray-600">{rsStatus}</p>}
 
             <hr />
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-base font-semibold text-gray-700">Research Registry</h2>
+                <h2 className="text-base font-semibold text-gray-700">{t('commons.registryTitle', 'Research Registry')}</h2>
               </div>
-              <button onClick={fetchResearch} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
+              <button onClick={fetchResearch} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">{t('common.refresh', 'Refresh')}</button>
             </div>
             {research.length === 0
-              ? <p className="text-sm text-gray-500">No records yet.</p>
+              ? <p className="text-sm text-gray-500">{t('commons.noResearch', 'No records yet.')}</p>
               : <ul className="space-y-3">
                   {research.map((r) => (
                     <li key={Number(r.id)} className="rounded border p-3 text-sm">
@@ -813,11 +823,11 @@ const KnowledgeCommonsTab = () => {
         {activeSection === 'charter' && (
           <>
             <div>
-              <h2 className="text-base font-semibold text-gray-700">AI Bill of Rights</h2>
+              <h2 className="text-base font-semibold text-gray-700">{t('commons.charterTitle', 'AI Bill of Rights')}</h2>
             </div>
-            <p className="text-xs text-gray-400 italic">Ratified on the Social Ledger</p>
+            <p className="text-xs text-gray-400 italic">{t('commons.charterSubtitle', 'Ratified on the Social Ledger')}</p>
             <ul className="space-y-4">
-              {AI_CHARTER.map((article) => (
+              {articlesList.map((article) => (
                 <li key={article.title} className="rounded border-l-4 border-indigo-400 bg-indigo-50 p-3">
                   <p className="font-semibold text-indigo-800 text-sm">{article.title}</p>
                   <p className="mt-1 text-xs text-indigo-700 whitespace-pre-line">{article.text}</p>
@@ -828,7 +838,7 @@ const KnowledgeCommonsTab = () => {
         )}
       </div>
       <div className="p-3 sm:p-4 mt-auto">
-        <ShareBar title="Civic OS Knowledge Commons" text="Contribute to the Civic OS knowledge commons" />
+        <ShareBar title={t('share.commonsTitle', 'Civic OS Knowledge Commons')} text={t('share.commonsText', 'Contribute to the Civic OS knowledge commons')} />
       </div>
     </div>
   );
@@ -836,6 +846,7 @@ const KnowledgeCommonsTab = () => {
 
 // ---- Legislature Tab ----
 const LegislatureTab = () => {
+  const { t } = useTranslation();
   // Propose
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -861,22 +872,22 @@ const LegislatureTab = () => {
 
   const handlePropose = async (e) => {
     e.preventDefault();
-    setProposeStatus('Proposing…');
+    setProposeStatus(t('legislature.proposing', 'Proposing…'));
     try {
       const res = await backend.proposeBill(title, body, author, category);
       setProposeStatus(`✅ ${res.message} (Bill #${res.bill_id})`);
       setTitle(''); setBody(''); setAuthor(''); setCategory('');
     } catch (err) {
-      setProposeStatus(`❌ Error: ${String(err)}`);
+      setProposeStatus(`❌ ${t('common.error', 'Error')}: ${String(err)}`);
     }
   };
 
   const handleVote = async (e) => {
     e.preventDefault();
-    setVoteResult('Voting…');
+    setVoteResult(t('legislature.voting', 'Voting…'));
     try {
       const res = await backend.castVote(BigInt(voteId), voteCitizen, voteChoice);
-      if (res.length === 0) { setVoteResult('❌ Bill not found or already voted.'); return; }
+      if (res.length === 0) { setVoteResult(`❌ ${t('legislature.voteError', 'Bill not found or already voted.')}`); return; }
       const r = res[0];
       const pct = (Number(r.yes) + Number(r.no)) > 0
         ? Math.round(Number(r.yes) / (Number(r.yes) + Number(r.no)) * 100)
@@ -884,20 +895,20 @@ const LegislatureTab = () => {
       setVoteResult(`✅ ${r.message} — 👍 ${r.yes} / 👎 ${r.no} / 🤝 ${r.abstain} (${pct}% yes) — ${r.status.toUpperCase()}`);
       setVoteId(''); setVoteCitizen(''); setVoteChoice('yes');
     } catch (err) {
-      setVoteResult(`❌ Error: ${String(err)}`);
+      setVoteResult(`❌ ${t('common.error', 'Error')}: ${String(err)}`);
     }
   };
 
   const handleFork = async (e) => {
     e.preventDefault();
-    setForkResult('Forking…');
+    setForkResult(t('legislature.forking', 'Forking…'));
     try {
       const res = await backend.forkBill(BigInt(forkId), forkTitle, forkBody, forkAuthor);
-      if (res.length === 0) { setForkResult('❌ Original bill not found.'); return; }
+      if (res.length === 0) { setForkResult(`❌ ${t('legislature.forkOriginalNotFound', 'Original bill not found.')}`); return; }
       setForkResult(`✅ ${res[0].message} → new Bill #${res[0].bill_id}`);
       setForkId(''); setForkTitle(''); setForkBody(''); setForkAuthor('');
     } catch (err) {
-      setForkResult(`❌ Error: ${String(err)}`);
+      setForkResult(`❌ ${t('common.error', 'Error')}: ${String(err)}`);
     }
   };
 
@@ -916,14 +927,14 @@ const LegislatureTab = () => {
     <div className="space-y-6 p-4">
       {/* Propose */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-700">📜 Propose a Bill</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t('legislature.proposeTitle', '📜 Propose a Bill')}</h2>
       </div>
       <form onSubmit={handlePropose} className="space-y-3">
-        <input className="w-full rounded border p-2" placeholder="Bill title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-        <textarea className="w-full rounded border p-2" rows={3} placeholder="Bill body / description" value={body} onChange={(e) => setBody(e.target.value)} required />
-        <input className="w-full rounded border p-2" placeholder="Author" value={author} onChange={(e) => setAuthor(e.target.value)} required />
-        <input className="w-full rounded border p-2" placeholder="Category (e.g. Energy, Housing)" value={category} onChange={(e) => setCategory(e.target.value)} required />
-        <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">Propose Bill</button>
+        <input className="w-full rounded border p-2" placeholder={t('legislature.billTitlePlaceholder', 'Bill title')} value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <textarea className="w-full rounded border p-2" rows={3} placeholder={t('legislature.billBodyPlaceholder', 'Bill body / description')} value={body} onChange={(e) => setBody(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder={t('legislature.authorPlaceholder', 'Author')} value={author} onChange={(e) => setAuthor(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder={t('legislature.categoryPlaceholder', 'Category (e.g. Energy, Housing)')} value={category} onChange={(e) => setCategory(e.target.value)} required />
+        <button type="submit" className="rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">{t('legislature.proposeBtn', 'Propose Bill')}</button>
       </form>
       {proposeStatus && <p className="text-sm text-gray-600">{proposeStatus}</p>}
 
@@ -931,18 +942,21 @@ const LegislatureTab = () => {
 
       {/* Vote */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-700">🗳️ Cast Vote <span className="text-sm font-normal text-gray-500">(50+1 rule)</span></h2>
+        <h2 className="text-lg font-semibold text-gray-700">
+          {t('legislature.voteTitle', '🗳️ Cast Vote')}{' '}
+          <span className="text-sm font-normal text-gray-500">{t('legislature.rule50', '(50+1 rule)')}</span>
+        </h2>
       </div>
-      <p className="text-xs text-gray-400">A bill commits to the Social Ledger once Yes votes exceed 50% of all participating votes.</p>
+      <p className="text-xs text-gray-400">{t('legislature.ruleExplanation', 'A bill commits to the Social Ledger once Yes votes exceed 50% of all participating votes.')}</p>
       <form onSubmit={handleVote} className="space-y-3">
-        <input className="w-full rounded border p-2" type="number" placeholder="Bill ID" value={voteId} onChange={(e) => setVoteId(e.target.value)} required />
-        <input className="w-full rounded border p-2" placeholder="Citizen name" value={voteCitizen} onChange={(e) => setVoteCitizen(e.target.value)} required />
+        <input className="w-full rounded border p-2" type="number" placeholder={t('legislature.billIdPlaceholder', 'Bill ID')} value={voteId} onChange={(e) => setVoteId(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder={t('legislature.citizenNamePlaceholder', 'Citizen name')} value={voteCitizen} onChange={(e) => setVoteCitizen(e.target.value)} required />
         <select className="w-full rounded border p-2" value={voteChoice} onChange={(e) => setVoteChoice(e.target.value)}>
-          <option value="yes">👍 Yes</option>
-          <option value="no">👎 No</option>
-          <option value="abstain">🤝 Abstain</option>
+          <option value="yes">{t('legislature.voteOptions.yes', '👍 Yes')}</option>
+          <option value="no">{t('legislature.voteOptions.no', '👎 No')}</option>
+          <option value="abstain">{t('legislature.voteOptions.abstain', '🤝 Abstain')}</option>
         </select>
-        <button type="submit" className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700">Cast Vote</button>
+        <button type="submit" className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700">{t('legislature.voteBtn', 'Cast Vote')}</button>
       </form>
       {voteResult && <p className="text-sm text-gray-600">{voteResult}</p>}
 
@@ -950,15 +964,15 @@ const LegislatureTab = () => {
 
       {/* Fork */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-700">🍴 Fork a Bill</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t('legislature.forkTitle', '🍴 Fork a Bill')}</h2>
       </div>
-      <p className="text-xs text-gray-400">Create an amended variant of an existing bill. The fork starts fresh with 0 votes.</p>
+      <p className="text-xs text-gray-400">{t('legislature.forkExplanation', 'Create an amended variant of an existing bill. The fork starts fresh with 0 votes.')}</p>
       <form onSubmit={handleFork} className="space-y-3">
-        <input className="w-full rounded border p-2" type="number" placeholder="Original Bill ID" value={forkId} onChange={(e) => setForkId(e.target.value)} required />
-        <input className="w-full rounded border p-2" placeholder="New title" value={forkTitle} onChange={(e) => setForkTitle(e.target.value)} required />
-        <textarea className="w-full rounded border p-2" rows={2} placeholder="Amended body" value={forkBody} onChange={(e) => setForkBody(e.target.value)} required />
-        <input className="w-full rounded border p-2" placeholder="Fork author" value={forkAuthor} onChange={(e) => setForkAuthor(e.target.value)} required />
-        <button type="submit" className="rounded bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600">Fork Bill</button>
+        <input className="w-full rounded border p-2" type="number" placeholder={t('legislature.originalBillIdPlaceholder', 'Original Bill ID')} value={forkId} onChange={(e) => setForkId(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder={t('legislature.newTitlePlaceholder', 'New title')} value={forkTitle} onChange={(e) => setForkTitle(e.target.value)} required />
+        <textarea className="w-full rounded border p-2" rows={2} placeholder={t('legislature.amendedBodyPlaceholder', 'Amended body')} value={forkBody} onChange={(e) => setForkBody(e.target.value)} required />
+        <input className="w-full rounded border p-2" placeholder={t('legislature.forkAuthorPlaceholder', 'Fork author')} value={forkAuthor} onChange={(e) => setForkAuthor(e.target.value)} required />
+        <button type="submit" className="rounded bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600">{t('legislature.forkBtn', 'Fork Bill')}</button>
       </form>
       {forkResult && <p className="text-sm text-gray-600">{forkResult}</p>}
 
@@ -967,12 +981,12 @@ const LegislatureTab = () => {
       {/* Bill list */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-700">📋 All Bills</h2>
+          <h2 className="text-lg font-semibold text-gray-700">{t('legislature.allBillsTitle', '📋 All Bills')}</h2>
         </div>
-        <button onClick={fetchBills} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">Refresh</button>
+        <button onClick={fetchBills} className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300">{t('common.refresh', 'Refresh')}</button>
       </div>
       {bills.length === 0
-        ? <p className="text-sm text-gray-500">No bills yet — click Refresh to load.</p>
+        ? <p className="text-sm text-gray-500">{t('legislature.noBills', 'No bills yet — click Refresh to load.')}</p>
         : <ul className="space-y-3">
             {bills.map((bill) => {
               const yes = Number(bill.yes_votes);
@@ -987,7 +1001,7 @@ const LegislatureTab = () => {
                       <span className="font-mono text-xs text-gray-400">#{Number(bill.id)}</span>
                       {bill.forked_from.length > 0 && (
                         <span className="ml-2 rounded bg-yellow-100 px-1 text-xs text-yellow-700">
-                          🍴 fork of #{Number(bill.forked_from[0])}
+                          🍴 {t('legislature.forkOf', 'fork of #')}{Number(bill.forked_from[0])}
                         </span>
                       )}
                       <p className="font-semibold">{bill.title}</p>
@@ -1008,7 +1022,7 @@ const LegislatureTab = () => {
           </ul>
       }
 
-      <ShareBar title="Civic OS Legislature" text="Propose, code, or vote on legislation on The Civic OS" />
+      <ShareBar title={t('share.legislatureTitle', 'Civic OS Legislature')} text={t('share.legislatureText', 'Propose, code, or vote on legislation on The Civic OS')} />
     </div>
   );
 };
@@ -1022,7 +1036,7 @@ const TABS = CHATBOT_ENABLED ? ['Chat', ...BASE_TABS] : BASE_TABS;
 const App = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(TABS[0]);
-  const [osName, setOsName] = useState('[Insert Civic Common Name]');
+  const [osName, setOsName] = useState('');
   const [identity, setIdentity] = useState(null);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
@@ -1083,6 +1097,7 @@ const App = () => {
             <input 
               type="text"
               className="text-xl font-bold tracking-tight text-white bg-transparent border-none outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 rounded px-2 w-auto max-w-[50%]"
+              placeholder={t('header.defaultOsName', '[Insert Civic Common Name]')}
               value={osName}
               onChange={(e) => setOsName(e.target.value)}
             />
