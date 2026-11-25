@@ -20,18 +20,19 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,ttf,eot}']
       },
       manifest: {
-        name: 'The Civic OS',
+        name: 'The Civic OS - Sovereign Decentralized Operating System',
         short_name: 'CivicOS',
-        description: 'Decentralized Civic Operating System on the Internet Computer.',
+        description: 'Sovereign civic platform for on-chain AI chat, dynamic bounties, justice workflows, democratic governance, and open knowledge commons on the Internet Computer.',
         theme_color: '#2563eb', // blue-600 to match the header
         background_color: '#ffffff',
         display: 'standalone',
+        categories: ['governance', 'productivity', 'utilities', 'social'],
         icons: [
           {
             src: 'bot.svg',
-            sizes: '192x192',
+            sizes: '192x192 512x512',
             type: 'image/svg+xml',
-            purpose: 'any maskable'
+            purpose: 'any'
           },
           {
             src: 'icon-192.png',

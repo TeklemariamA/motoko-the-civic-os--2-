@@ -164,15 +164,18 @@ def file_case(plaintiff: str, defendant: str, category: str, evidence: str):
         jurors=selected_jurors
     )
 
-    if "cases" not in db: db["cases"] = []
+    if "cases" not in db:
+        db["cases"] = []
     db["cases"].append(new_case)
     return {"case_id": case_id, "jury": selected_jurors}
 
 @app.post("/justice/cast_verdict")
 def cast_verdict(case_id: int, juror_name: str, verdict: str):
-    case = next((c for c in db["cases"] if c.id == case_id), None)
+    case = next((c for c in db.get("cases", []) if c.id == case_id), None)
     if not case or juror_name not in case.jurors:
         raise HTTPException(status_code=403, detail="Unauthorized juror")
+    if case.status == "resolved":
+        raise HTTPException(status_code=400, detail="Case is already resolved")
 
     case.votes[juror_name] = verdict
 
@@ -195,6 +198,13 @@ def cast_verdict(case_id: int, juror_name: str, verdict: str):
                 db["users"][juror]["merit"] = db["users"][juror].get("merit", 0) - 2 # Penalize 'lazy' or dishonest voting
 
         return {"verdict": winner, "message": "Case merged into the Social Ledger"}
+
+    return {
+        "verdict": None,
+        "votes_recorded": len(case.votes),
+        "votes_required": len(case.jurors),
+        "message": "Vote recorded; awaiting remaining jurors"
+    }
 @app.post("/chat")
 def chat(messages: List[Dict]):
     if not isinstance(messages, list):

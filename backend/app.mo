@@ -12,8 +12,6 @@ import Blob "mo:base/Blob";
 import Principal "mo:base/Principal";
 import Nat8 "mo:base/Nat8";
 import Nat64 "mo:base/Nat64";
-import Result "mo:base/Result";
-import Error "mo:base/Error";
 // Runtime not needed or should use assert false
 
 persistent actor CivicOS {
@@ -108,21 +106,21 @@ persistent actor CivicOS {
 
   // ---- STABLE STATE ----
 
-  stable var nextBountyId : Nat = 1;
-  stable var nextCaseId : Nat = 1;
-  stable var nextBillId : Nat = 1;
-  stable var nextSkillId : Nat = 1;
-  stable var nextResearchId : Nat = 1;
-  stable var bounties : [Bounty] = [];
-  stable var auditLog : [AuditEntry] = [];
-  stable var cases : [Case] = [];
-  stable var bills : [Bill] = [];
+  var nextBountyId : Nat = 1;
+  var nextCaseId : Nat = 1;
+  var nextBillId : Nat = 1;
+  var nextSkillId : Nat = 1;
+  var nextResearchId : Nat = 1;
+  var bounties : [Bounty] = [];
+  var auditLog : [AuditEntry] = [];
+  var cases : [Case] = [];
+  var bills : [Bill] = [];
   // (bill_id, citizen_name, choice) — one row per vote
-  stable var billVotes : [(Nat, Text, Text)] = [];
-  stable var members : [Member] = [];
-  stable var skillCommits : [SkillCommit] = [];
-  stable var researchRecords : [ResearchRecord] = [];
-  stable var users : [User] = [
+  var billVotes : [(Nat, Text, Text)] = [];
+  var members : [Member] = [];
+  var skillCommits : [SkillCommit] = [];
+  var researchRecords : [ResearchRecord] = [];
+  var users : [User] = [
     { name = "elara"; merit = 50 },
     { name = "devon"; merit = 20 },
   ];
@@ -311,7 +309,7 @@ persistent actor CivicOS {
 
   // ---- FORKING ----
 
-  public func executeCivicFork(proposalId : Nat, forkSignatories: Nat, newWallet: Text, newCodeBase: Text) : async Text {
+  public func executeCivicFork(_proposalId : Nat, forkSignatories : Nat, _newWallet : Text, _newCodeBase : Text) : async Text {
       let totalMembersCount : Nat = users.size();
       if (totalMembersCount == 0) { return "Error: No members"; };
       let sharePercentage : Float = Float.fromInt(forkSignatories) / Float.fromInt(totalMembersCount);

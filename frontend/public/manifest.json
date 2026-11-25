@@ -1,20 +1,31 @@
 {
   "short_name": "CivicOS",
-  "name": "CivicOS v2.0: The Purist Protocol",
+  "name": "The Civic OS - Sovereign Decentralized Operating System",
+  "description": "Sovereign civic platform for on-chain AI chat, dynamic bounties, justice workflows, democratic governance, and open knowledge commons on the Internet Computer.",
+  "categories": ["governance", "productivity", "utilities", "social"],
   "icons": [
     {
       "src": "/bot.svg",
       "type": "image/svg+xml",
-      "sizes": "192x192"
+      "sizes": "192x192 512x512",
+      "purpose": "any"
     },
     {
-      "src": "/bot.svg",
-      "type": "image/svg+xml",
-      "sizes": "512x512"
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#ffffff",
-  "background_color": "#f9fafb"
+  "theme_color": "#2563eb",
+  "background_color": "#ffffff"
 }

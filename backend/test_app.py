@@ -63,15 +63,27 @@ class AppTests(unittest.TestCase):
 
         merit_before = {juror: db["users"][juror]["merit"] for juror in jury}
 
-        for juror in jury:
+        for idx, juror in enumerate(jury):
             verdict_resp = client.post(
                 "/justice/cast_verdict",
                 params={"case_id": case_id, "juror_name": juror, "verdict": "guilty"},
             )
             self.assertEqual(verdict_resp.status_code, 200)
+            payload = verdict_resp.json()
+            if idx < len(jury) - 1:
+                self.assertIsNone(payload["verdict"])
+                self.assertEqual(payload["votes_recorded"], idx + 1)
+            else:
+                self.assertEqual(payload["verdict"], "guilty")
 
         for juror in jury:
             self.assertEqual(db["users"][juror]["merit"], merit_before[juror] + 5)
+
+        repeat_resp = client.post(
+            "/justice/cast_verdict",
+            params={"case_id": case_id, "juror_name": jury[0], "verdict": "not_guilty"},
+        )
+        self.assertEqual(repeat_resp.status_code, 400)
 
     def test_justice_jury_requires_unique_weighted_selection(self) -> None:
         import app as app_module

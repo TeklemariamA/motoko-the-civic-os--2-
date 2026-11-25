@@ -1033,12 +1033,71 @@ import { CkbtcFaucet } from './CkbtcFaucet.jsx';
 const BASE_TABS = ['Bounties', 'Audit', 'Justice', 'Membership', 'Commons', 'Legislature', 'ckBTC'];
 const TABS = CHATBOT_ENABLED ? ['Chat', ...BASE_TABS] : BASE_TABS;
 
+const TAB_DESCRIPTIONS = {
+  Chat: 'Interact with sovereign on-chain AI agents living on the Internet Computer on The Civic OS.',
+  Bounties: 'Explore, create, and fund decentralized task bounties with dynamic urgency-based reward multipliers on The Civic OS.',
+  Audit: 'Inspect verifiable public audit trails and immutable ledger records on The Civic OS.',
+  Justice: 'Participate in decentralized dispute resolution and juror arbitration on The Civic OS.',
+  Membership: 'Citizen enrollment and decentralized identity verification powered by Internet Identity on The Civic OS.',
+  Commons: 'Access the sovereign knowledge commons, open source skills, and collaborative documentation on The Civic OS.',
+  Legislature: 'Propose bills and participate in democratic decentralized governance voting on The Civic OS.',
+  ckBTC: 'Direct Bitcoin integration and Chain-Key Bitcoin (ckBTC) faucet for fast, gasless transactions on The Civic OS.'
+};
+
+const getInitialTab = () => {
+  if (typeof window === 'undefined') return TABS[0];
+  const hash = window.location.hash.replace(/^#/, '').trim().toLowerCase();
+  if (!hash) return TABS[0];
+  const found = TABS.find((t) => t.toLowerCase() === hash);
+  return found || TABS[0];
+};
+
 const App = () => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState(TABS[0]);
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [osName, setOsName] = useState('');
   const [identity, setIdentity] = useState(null);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  // Sync document title and meta description for search engines and user navigation
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const localizedTab = t(`tabs.${activeTab}`, activeTab);
+    document.title = `${localizedTab} | The Civic OS - Sovereign Decentralized Platform`;
+
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute(
+        'content',
+        TAB_DESCRIPTIONS[activeTab] ||
+          'The Civic OS is a sovereign, on-chain civic platform for AI, bounties, justice workflows, governance voting, and knowledge commons on the Internet Computer.'
+      );
+    }
+  }, [activeTab, t]);
+
+  // Handle browser back/forward and hash deep links
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace(/^#/, '').trim().toLowerCase();
+      const matched = TABS.find((tab) => tab.toLowerCase() === hash);
+      if (matched && matched !== activeTab) {
+        setActiveTab(matched);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [activeTab]);
+
+  const switchTab = (tab) => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      const targetHash = `#${tab.toLowerCase()}`;
+      if (window.location.hash !== targetHash) {
+        window.history.replaceState(null, '', targetHash);
+      }
+    }
+  };
 
   useEffect(() => {
     initAuth().then(async (client) => {
@@ -1139,7 +1198,7 @@ const App = () => {
           {TABS.map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => switchTab(tab)}
               className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab
                   ? 'border-b-2 border-blue-500 text-blue-600'

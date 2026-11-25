@@ -1,0 +1,9 @@
+# Robots.txt for The Civic OS
+# https://civic-os-opensourcism.cloud
+
+User-agent: *
+Allow: /
+
+# Host & Sitemap specification
+Host: https://civic-os-opensourcism.cloud
+Sitemap: https://civic-os-opensourcism.cloud/sitemap.xml
